@@ -72,16 +72,13 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	info := ctx.info
 
 	// Create a root stack resource that we'll parent everything to.
-	reg, err := ctx.RegisterResource(
-		"pulumi:pulumi:Stack", fmt.Sprintf("%s-%s", info.Project, info.Stack), false, nil)
+	var stack ResourceState
+	err := ctx.RegisterResource(
+		"pulumi:pulumi:Stack", fmt.Sprintf("%s-%s", info.Project, info.Stack), nil, &stack)
 	if err != nil {
 		return err
 	}
-	ctx.stackR, _, err = reg.URN().await(context.TODO())
-	if err != nil {
-		return err
-	}
-	contract.Assertf(ctx.stackR != "", "expected root stack resource to have a non-empty URN")
+	ctx.stack = stack
 
 	// Execute the body.
 	var result error
@@ -90,12 +87,15 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	}
 
 	// Register all the outputs to the stack object.
-	if err = ctx.RegisterResourceOutputs(ctx.stackR, ctx.exports); err != nil {
+	if err = ctx.RegisterResourceOutputs(ctx.stack, ctx.exports); err != nil {
 		result = multierror.Append(result, err)
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding.  Also, prevent any new RPCs from happening.
+	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
 	ctx.waitForRPCs()
+	if ctx.rpcError != nil {
+		return ctx.rpcError
+	}
 
 	// Propagate the error from the body, if any.
 	return result
