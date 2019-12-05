@@ -17,6 +17,7 @@
 package pulumi
 
 import (
+	"io"
 	"reflect"
 	"sort"
 	"strings"
@@ -297,9 +298,9 @@ func (ctx *Context) ReadResource(
 			Id:         string(idToRead),
 		})
 		if err != nil {
-			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
 		} else {
-			logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
+			logging.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 		if resp != nil {
 			urn, resID = resp.Urn, string(idToRead)
@@ -411,6 +412,25 @@ func (ctx *Context) RegisterResource(
 	}()
 
 	return nil
+}
+
+type componentRegistration struct {
+	ctx      *Context
+	resource ComponentResource
+}
+
+func (cr *componentRegistration) Close() error {
+	return cr.ctx.RegisterResourceOutputs(cr.resource, nil)
+}
+
+func (ctx *Context) RegisterComponentResource(
+	t, name string, resource ComponentResource, opts ...ResourceOption) (io.Closer, error) {
+
+	if err := ctx.RegisterResource(t, name, nil, resource, opts...); err != nil {
+		return nil, err
+	}
+
+	return &componentRegistration{ctx, resource}, nil
 }
 
 // resourceState contains the results of a resource registration operation.
