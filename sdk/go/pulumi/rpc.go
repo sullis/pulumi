@@ -139,6 +139,10 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 		case reflect.String:
 			return resource.NewStringProperty(rv.String()), nil, nil
 		case reflect.Array, reflect.Slice:
+			if rv.IsNil() {
+				return resource.PropertyValue{}, nil, nil
+			}
+
 			// If an array or a slice, create a new array by recursing into elements.
 			var arr []resource.PropertyValue
 			var deps []Resource
@@ -158,6 +162,10 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 			if rv.Type().Key().Kind() != reflect.String {
 				return resource.PropertyValue{}, nil,
 					errors.Errorf("expected map keys to be strings; got %v", rv.Type().Key())
+			}
+
+			if rv.IsNil() {
+				return resource.PropertyValue{}, nil, nil
 			}
 
 			// For maps, only support string-based keys, and recurse into the values.
