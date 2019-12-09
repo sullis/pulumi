@@ -5180,7 +5180,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 
 			var resB testResource
 			err = ctx.RegisterResource("pkgA:m:typA", "resB", map[string]pulumi.Input{
-				"baz": resA.Foo.Apply(func(v string) string {
+				"baz": resA.Foo.ApplyT(func(v string) string {
 					return v + "bar"
 				}),
 			}, &resB)

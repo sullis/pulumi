@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -69,7 +70,7 @@ func TestArrayOutputs(t *testing.T) {
 		out.resolve([]interface{}{nil, 0, "x"}, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(arr []interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
 			assert.NotNil(t, arr)
 			if assert.Equal(t, 3, len(arr)) {
 				assert.Equal(t, nil, arr[0])
@@ -87,7 +88,7 @@ func TestBoolOutputs(t *testing.T) {
 		out.resolve(true, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v bool) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v bool) (interface{}, error) {
 			assert.True(t, v)
 			return nil, nil
 		}))
@@ -104,7 +105,7 @@ func TestMapOutputs(t *testing.T) {
 		}, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v map[string]interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v map[string]interface{}) (interface{}, error) {
 			assert.NotNil(t, v)
 			assert.Equal(t, 1, v["x"])
 			assert.Equal(t, false, v["y"])
@@ -120,7 +121,7 @@ func TestNumberOutputs(t *testing.T) {
 		out.resolve(42.345, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v float64) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v float64) (interface{}, error) {
 			assert.Equal(t, 42.345, v)
 			return nil, nil
 		}))
@@ -133,7 +134,7 @@ func TestStringOutputs(t *testing.T) {
 		out.resolve("a stringy output", true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v string) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v string) (interface{}, error) {
 			assert.Equal(t, "a stringy output", v)
 			return nil, nil
 		}))
@@ -149,7 +150,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			resolve(other)
 			go func() { resolveOther(99) }()
 		}()
-		assertApplied(t, out.Apply(func(v interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v interface{}) (interface{}, error) {
 			assert.Equal(t, v, 99)
 			return nil, nil
 		}))
@@ -174,7 +175,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -189,7 +190,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, false) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -203,7 +204,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.reject(errors.New("boom")) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -217,7 +218,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 1) }()
 			ranApp = true
@@ -229,7 +230,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
-		app = out.Apply(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 2) }()
 			ranApp = true
@@ -246,7 +247,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -257,7 +258,7 @@ func TestOutputApply(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 
-		app = out.Apply(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -275,7 +276,7 @@ func TestOutputApply(t *testing.T) {
 
 		var ok bool
 {{range .Builtins}}
-		_, ok = out.Apply(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
+		_, ok = out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
 		assert.True(t, ok)
 {{end}}
 	}
@@ -293,17 +294,17 @@ func TestOutputApply(t *testing.T) {
 		go func() { out2.resolve("hello", true) }()
 
 		res := out.
-			Apply(func(v int) myStructType {
+			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "qux,zed"}
 			}).
-			Apply(func(v interface{}) (string, error) {
+			ApplyT(func(v interface{}) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "qux,zed" {
 					return "", errors.New("unexpected value")
 				}
 				return bar, nil
 			}).
-			Apply(func (v string) ([]string, error) {
+			ApplyT(func (v string) ([]string, error) {
 				strs := strings.Split(v, ",")
 				if len(strs) != 2 {
 					return nil, errors.New("unexpected value")
@@ -312,17 +313,17 @@ func TestOutputApply(t *testing.T) {
 			})
 
 		res2 := out.
-			Apply(func(v int) myStructType {
+			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "foo,bar"}
 			}).
-			Apply(func(v interface{}) (string, error) {
+			ApplyT(func(v interface{}) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "foo,bar" {
 					return "", errors.New("unexpected value")
 				}
 				return bar, nil
 			}).
-			Apply(func (v string) ([]string, error) {
+			ApplyT(func (v string) ([]string, error) {
 				strs := strings.Split(v, ",")
 				if len(strs) != 2 {
 					return nil, errors.New("unexpected value")
@@ -330,16 +331,23 @@ func TestOutputApply(t *testing.T) {
 				return []string{strs[0], strs[1]}, nil
 			})
 
-		res3 := All(res, res2).Apply(func (v []interface{}) string {
+		res3 := All(res, res2).ApplyT(func (v []interface{}) string {
 			res, res2 := v[0].([]string), v[1].([]string)
 			return strings.Join(append(res2, res...), ",")
 		})
 
-		res4 := All(out, out2).Apply(func(v []interface{}) *myStructType {
+		res4 := All(out, out2).ApplyT(func(v []interface{}) *myStructType {
 			return &myStructType{
 				foo: v[0].(int),
 				bar: v[1].(string),
 			}
+		})
+
+		res5 := All(res3, res4).Apply(func (v interface{}) (interface{}, error) {
+			vs := v.([]interface{})
+			res3 := vs[0].(string)
+			res4 := vs[1].(*myStructType)
+			return fmt.Sprintf("%v;%v;%v", res3, res4.foo, res4.bar), nil
 		})
 
 		_, ok := res.(StringArrayOutput)
@@ -373,6 +381,11 @@ func TestOutputApply(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
+
+		v, known, err = await(res5)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}
 }
 

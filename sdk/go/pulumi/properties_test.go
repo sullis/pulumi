@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -69,7 +70,7 @@ func TestArrayOutputs(t *testing.T) {
 		out.resolve([]interface{}{nil, 0, "x"}, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(arr []interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(arr []interface{}) (interface{}, error) {
 			assert.NotNil(t, arr)
 			if assert.Equal(t, 3, len(arr)) {
 				assert.Equal(t, nil, arr[0])
@@ -87,7 +88,7 @@ func TestBoolOutputs(t *testing.T) {
 		out.resolve(true, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v bool) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v bool) (interface{}, error) {
 			assert.True(t, v)
 			return nil, nil
 		}))
@@ -104,7 +105,7 @@ func TestMapOutputs(t *testing.T) {
 		}, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v map[string]interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v map[string]interface{}) (interface{}, error) {
 			assert.NotNil(t, v)
 			assert.Equal(t, 1, v["x"])
 			assert.Equal(t, false, v["y"])
@@ -120,7 +121,7 @@ func TestNumberOutputs(t *testing.T) {
 		out.resolve(42.345, true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v float64) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v float64) (interface{}, error) {
 			assert.Equal(t, 42.345, v)
 			return nil, nil
 		}))
@@ -133,7 +134,7 @@ func TestStringOutputs(t *testing.T) {
 		out.resolve("a stringy output", true)
 	}()
 	{
-		assertApplied(t, out.Apply(func(v string) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v string) (interface{}, error) {
 			assert.Equal(t, "a stringy output", v)
 			return nil, nil
 		}))
@@ -149,7 +150,7 @@ func TestResolveOutputToOutput(t *testing.T) {
 			resolve(other)
 			go func() { resolveOther(99) }()
 		}()
-		assertApplied(t, out.Apply(func(v interface{}) (interface{}, error) {
+		assertApplied(t, out.ApplyT(func(v interface{}) (interface{}, error) {
 			assert.Equal(t, v, 99)
 			return nil, nil
 		}))
@@ -174,7 +175,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -189,7 +190,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, false) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -203,7 +204,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.reject(errors.New("boom")) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			ranApp = true
 			return v + 1, nil
 		})
@@ -217,7 +218,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 1) }()
 			ranApp = true
@@ -229,7 +230,7 @@ func TestOutputApply(t *testing.T) {
 		assert.True(t, known)
 		assert.Equal(t, v, 43)
 
-		app = out.Apply(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (interface{}, error) {
 			other, resolveOther, _ := NewOutput()
 			go func() { resolveOther(v + 2) }()
 			ranApp = true
@@ -246,7 +247,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 		var ranApp bool
-		app := out.Apply(func(v int) (interface{}, error) {
+		app := out.ApplyT(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -257,7 +258,7 @@ func TestOutputApply(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 
-		app = out.Apply(func(v int) (interface{}, error) {
+		app = out.ApplyT(func(v int) (interface{}, error) {
 			other, _, rejectOther := NewOutput()
 			go func() { rejectOther(errors.New("boom")) }()
 			ranApp = true
@@ -275,181 +276,181 @@ func TestOutputApply(t *testing.T) {
 
 		var ok bool
 
-		_, ok = out.Apply(func(v int) Archive { return *new(Archive) }).(ArchiveOutput)
+		_, ok = out.ApplyT(func(v int) Archive { return *new(Archive) }).(ArchiveOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []Archive { return *new([]Archive) }).(ArchiveArrayOutput)
+		_, ok = out.ApplyT(func(v int) []Archive { return *new([]Archive) }).(ArchiveArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]Archive { return *new(map[string]Archive) }).(ArchiveMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]Archive { return *new(map[string]Archive) }).(ArchiveMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) Asset { return *new(Asset) }).(AssetOutput)
+		_, ok = out.ApplyT(func(v int) Asset { return *new(Asset) }).(AssetOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []Asset { return *new([]Asset) }).(AssetArrayOutput)
+		_, ok = out.ApplyT(func(v int) []Asset { return *new([]Asset) }).(AssetArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]Asset { return *new(map[string]Asset) }).(AssetMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]Asset { return *new(map[string]Asset) }).(AssetMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
+		_, ok = out.ApplyT(func(v int) AssetOrArchive { return *new(AssetOrArchive) }).(AssetOrArchiveOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) }).(AssetOrArchiveArrayOutput)
+		_, ok = out.ApplyT(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) }).(AssetOrArchiveArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) }).(AssetOrArchiveMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) }).(AssetOrArchiveMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) bool { return *new(bool) }).(BoolOutput)
+		_, ok = out.ApplyT(func(v int) bool { return *new(bool) }).(BoolOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []bool { return *new([]bool) }).(BoolArrayOutput)
+		_, ok = out.ApplyT(func(v int) []bool { return *new([]bool) }).(BoolArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]bool { return *new(map[string]bool) }).(BoolMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]bool { return *new(map[string]bool) }).(BoolMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) float32 { return *new(float32) }).(Float32Output)
+		_, ok = out.ApplyT(func(v int) float32 { return *new(float32) }).(Float32Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []float32 { return *new([]float32) }).(Float32ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []float32 { return *new([]float32) }).(Float32ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]float32 { return *new(map[string]float32) }).(Float32MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]float32 { return *new(map[string]float32) }).(Float32MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) float64 { return *new(float64) }).(Float64Output)
+		_, ok = out.ApplyT(func(v int) float64 { return *new(float64) }).(Float64Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []float64 { return *new([]float64) }).(Float64ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []float64 { return *new([]float64) }).(Float64ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]float64 { return *new(map[string]float64) }).(Float64MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]float64 { return *new(map[string]float64) }).(Float64MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) ID { return *new(ID) }).(IDOutput)
+		_, ok = out.ApplyT(func(v int) ID { return *new(ID) }).(IDOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []ID { return *new([]ID) }).(IDArrayOutput)
+		_, ok = out.ApplyT(func(v int) []ID { return *new([]ID) }).(IDArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]ID { return *new(map[string]ID) }).(IDMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]ID { return *new(map[string]ID) }).(IDMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []interface{} { return *new([]interface{}) }).(ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []interface{} { return *new([]interface{}) }).(ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]interface{} { return *new(map[string]interface{}) }).(MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]interface{} { return *new(map[string]interface{}) }).(MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) int { return *new(int) }).(IntOutput)
+		_, ok = out.ApplyT(func(v int) int { return *new(int) }).(IntOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []int { return *new([]int) }).(IntArrayOutput)
+		_, ok = out.ApplyT(func(v int) []int { return *new([]int) }).(IntArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]int { return *new(map[string]int) }).(IntMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]int { return *new(map[string]int) }).(IntMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) int16 { return *new(int16) }).(Int16Output)
+		_, ok = out.ApplyT(func(v int) int16 { return *new(int16) }).(Int16Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []int16 { return *new([]int16) }).(Int16ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []int16 { return *new([]int16) }).(Int16ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]int16 { return *new(map[string]int16) }).(Int16MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]int16 { return *new(map[string]int16) }).(Int16MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) int32 { return *new(int32) }).(Int32Output)
+		_, ok = out.ApplyT(func(v int) int32 { return *new(int32) }).(Int32Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []int32 { return *new([]int32) }).(Int32ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []int32 { return *new([]int32) }).(Int32ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]int32 { return *new(map[string]int32) }).(Int32MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]int32 { return *new(map[string]int32) }).(Int32MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) int64 { return *new(int64) }).(Int64Output)
+		_, ok = out.ApplyT(func(v int) int64 { return *new(int64) }).(Int64Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []int64 { return *new([]int64) }).(Int64ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []int64 { return *new([]int64) }).(Int64ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]int64 { return *new(map[string]int64) }).(Int64MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]int64 { return *new(map[string]int64) }).(Int64MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) int8 { return *new(int8) }).(Int8Output)
+		_, ok = out.ApplyT(func(v int) int8 { return *new(int8) }).(Int8Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []int8 { return *new([]int8) }).(Int8ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []int8 { return *new([]int8) }).(Int8ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]int8 { return *new(map[string]int8) }).(Int8MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]int8 { return *new(map[string]int8) }).(Int8MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) string { return *new(string) }).(StringOutput)
+		_, ok = out.ApplyT(func(v int) string { return *new(string) }).(StringOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []string { return *new([]string) }).(StringArrayOutput)
+		_, ok = out.ApplyT(func(v int) []string { return *new([]string) }).(StringArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]string { return *new(map[string]string) }).(StringMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]string { return *new(map[string]string) }).(StringMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) URN { return *new(URN) }).(URNOutput)
+		_, ok = out.ApplyT(func(v int) URN { return *new(URN) }).(URNOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []URN { return *new([]URN) }).(URNArrayOutput)
+		_, ok = out.ApplyT(func(v int) []URN { return *new([]URN) }).(URNArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]URN { return *new(map[string]URN) }).(URNMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]URN { return *new(map[string]URN) }).(URNMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) uint { return *new(uint) }).(UintOutput)
+		_, ok = out.ApplyT(func(v int) uint { return *new(uint) }).(UintOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []uint { return *new([]uint) }).(UintArrayOutput)
+		_, ok = out.ApplyT(func(v int) []uint { return *new([]uint) }).(UintArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]uint { return *new(map[string]uint) }).(UintMapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]uint { return *new(map[string]uint) }).(UintMapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) uint16 { return *new(uint16) }).(Uint16Output)
+		_, ok = out.ApplyT(func(v int) uint16 { return *new(uint16) }).(Uint16Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []uint16 { return *new([]uint16) }).(Uint16ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []uint16 { return *new([]uint16) }).(Uint16ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]uint16 { return *new(map[string]uint16) }).(Uint16MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]uint16 { return *new(map[string]uint16) }).(Uint16MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) uint32 { return *new(uint32) }).(Uint32Output)
+		_, ok = out.ApplyT(func(v int) uint32 { return *new(uint32) }).(Uint32Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []uint32 { return *new([]uint32) }).(Uint32ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []uint32 { return *new([]uint32) }).(Uint32ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]uint32 { return *new(map[string]uint32) }).(Uint32MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]uint32 { return *new(map[string]uint32) }).(Uint32MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) uint64 { return *new(uint64) }).(Uint64Output)
+		_, ok = out.ApplyT(func(v int) uint64 { return *new(uint64) }).(Uint64Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []uint64 { return *new([]uint64) }).(Uint64ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []uint64 { return *new([]uint64) }).(Uint64ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]uint64 { return *new(map[string]uint64) }).(Uint64MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]uint64 { return *new(map[string]uint64) }).(Uint64MapOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) uint8 { return *new(uint8) }).(Uint8Output)
+		_, ok = out.ApplyT(func(v int) uint8 { return *new(uint8) }).(Uint8Output)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) []uint8 { return *new([]uint8) }).(Uint8ArrayOutput)
+		_, ok = out.ApplyT(func(v int) []uint8 { return *new([]uint8) }).(Uint8ArrayOutput)
 		assert.True(t, ok)
 
-		_, ok = out.Apply(func(v int) map[string]uint8 { return *new(map[string]uint8) }).(Uint8MapOutput)
+		_, ok = out.ApplyT(func(v int) map[string]uint8 { return *new(map[string]uint8) }).(Uint8MapOutput)
 		assert.True(t, ok)
 
 	}
@@ -467,17 +468,17 @@ func TestOutputApply(t *testing.T) {
 		go func() { out2.resolve("hello", true) }()
 
 		res := out.
-			Apply(func(v int) myStructType {
+			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "qux,zed"}
 			}).
-			Apply(func(v interface{}) (string, error) {
+			ApplyT(func(v interface{}) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "qux,zed" {
 					return "", errors.New("unexpected value")
 				}
 				return bar, nil
 			}).
-			Apply(func(v string) ([]string, error) {
+			ApplyT(func(v string) ([]string, error) {
 				strs := strings.Split(v, ",")
 				if len(strs) != 2 {
 					return nil, errors.New("unexpected value")
@@ -486,17 +487,17 @@ func TestOutputApply(t *testing.T) {
 			})
 
 		res2 := out.
-			Apply(func(v int) myStructType {
+			ApplyT(func(v int) myStructType {
 				return myStructType{foo: v, bar: "foo,bar"}
 			}).
-			Apply(func(v interface{}) (string, error) {
+			ApplyT(func(v interface{}) (string, error) {
 				bar := v.(myStructType).bar
 				if bar != "foo,bar" {
 					return "", errors.New("unexpected value")
 				}
 				return bar, nil
 			}).
-			Apply(func(v string) ([]string, error) {
+			ApplyT(func(v string) ([]string, error) {
 				strs := strings.Split(v, ",")
 				if len(strs) != 2 {
 					return nil, errors.New("unexpected value")
@@ -504,16 +505,23 @@ func TestOutputApply(t *testing.T) {
 				return []string{strs[0], strs[1]}, nil
 			})
 
-		res3 := All(res, res2).Apply(func(v []interface{}) string {
+		res3 := All(res, res2).ApplyT(func(v []interface{}) string {
 			res, res2 := v[0].([]string), v[1].([]string)
 			return strings.Join(append(res2, res...), ",")
 		})
 
-		res4 := All(out, out2).Apply(func(v []interface{}) *myStructType {
+		res4 := All(out, out2).ApplyT(func(v []interface{}) *myStructType {
 			return &myStructType{
 				foo: v[0].(int),
 				bar: v[1].(string),
 			}
+		})
+
+		res5 := All(res3, res4).Apply(func(v interface{}) (interface{}, error) {
+			vs := v.([]interface{})
+			res3 := vs[0].(string)
+			res4 := vs[1].(*myStructType)
+			return fmt.Sprintf("%v;%v;%v", res3, res4.foo, res4.bar), nil
 		})
 
 		_, ok := res.(StringArrayOutput)
@@ -547,6 +555,11 @@ func TestOutputApply(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, known)
 		assert.Equal(t, &myStructType{foo: 42, bar: "hello"}, v)
+
+		v, known, err = await(res5)
+		assert.Nil(t, err)
+		assert.True(t, known)
+		assert.Equal(t, "foo,bar,qux,zed;42;hello", v)
 	}
 }
 

@@ -32,8 +32,10 @@ import (
 type Output interface {
 	ElementType() reflect.Type
 
-	Apply(applier interface{}) Output
-	ApplyWithContext(ctx context.Context, applier interface{}) Output
+	Apply(applier func(interface{}) (interface{}, error)) AnyOutput
+	ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput
+	ApplyT(applier interface{}) Output
+	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
 	dependencies() []Resource
@@ -274,19 +276,81 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 // Apply transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
+//
 // nolint: interfacer
-func (o *OutputState) Apply(applier interface{}) Output {
-	return o.ApplyWithContext(context.Background(), makeContextful(applier, o.elementType()))
+func (o *OutputState) Apply(applier func(interface{}) (interface{}, error)) AnyOutput {
+	return o.ApplyWithContext(context.Background(), func(_ context.Context, v interface{}) (interface{}, error) {
+		return applier(v)
+	})
 }
-
-var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 
 // ApplyWithContext transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-// The provided context can be used to reject the output as canceled.
+//
 // nolint: interfacer
-func (o *OutputState) ApplyWithContext(ctx context.Context, applier interface{}) Output {
+func (o *OutputState) ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput {
+	return o.ApplyTWithContext(ctx, applier).(AnyOutput)
+}
+
+// ApplyT transforms the data of the output property using the applier func. The result remains an output
+// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
+// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
+//
+// The applier function must have one of the following signatures:
+//
+//    func (v U) T
+//    func (v U) (T, error)
+//
+// U must be assignable from the ElementType of the Output. If T is a type that has a registered Output type, the
+// result of ApplyT will be of the registered Output type, and can be used in an appropriate type assertion:
+//
+//    stringOutput := pulumi.String("hello").ToStringOutput()
+//    intOutput := stringOutput.ApplyT(func(v string) int {
+//        return len(v)
+//    }).(pulumi.IntOutput)
+//
+// Otherwise, the result will be of type AnyOutput:
+//
+//    stringOutput := pulumi.String("hello").ToStringOutput()
+//    intOutput := stringOutput.ApplyT(func(v string) []rune {
+//        return []rune(v)
+//    }).(pulumi.AnyOutput)
+//
+// nolint: interfacer
+func (o *OutputState) ApplyT(applier interface{}) Output {
+	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
+}
+
+var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
+
+// ApplyTWithContext transforms the data of the output property using the applier func. The result remains an output
+// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
+// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
+// The provided context can be used to reject the output as canceled.
+//
+// The applier function must have one of the following signatures:
+//
+//    func (ctx context.Context, v U) T
+//    func (ctx context.Context, v U) (T, error)
+//
+// U must be assignable from the ElementType of the Output. If T is a type that has a registered Output type, the
+// result of ApplyT will be of the registered Output type, and can be used in an appropriate type assertion:
+//
+//    stringOutput := pulumi.String("hello").ToStringOutput()
+//    intOutput := stringOutput.ApplyTWithContext(func(_ context.Context, v string) int {
+//        return len(v)
+//    }).(pulumi.IntOutput)
+//
+// Otherwise, the result will be of type AnyOutput:
+//
+//    stringOutput := pulumi.String("hello").ToStringOutput()
+//    intOutput := stringOutput.ApplyT(func(_ context.Context, v string) []rune {
+//        return []rune(v)
+//    }).(pulumi.AnyOutput)
+//
+// nolint: interfacer
+func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
@@ -315,594 +379,594 @@ func (o *OutputState) ApplyWithContext(ctx context.Context, applier interface{})
 	return result
 }
 
-// ApplyArchive is like Apply, but returns a ArchiveOutput.
+// ApplyArchive is like ApplyT, but returns a ArchiveOutput.
 func (o *OutputState) ApplyArchive(applier interface{}) ArchiveOutput {
-	return o.Apply(applier).(ArchiveOutput)
+	return o.ApplyT(applier).(ArchiveOutput)
 }
 
-// ApplyArchiveWithContext is like ApplyWithContext, but returns a ArchiveOutput.
+// ApplyArchiveWithContext is like ApplyTWithContext, but returns a ArchiveOutput.
 func (o *OutputState) ApplyArchiveWithContext(ctx context.Context, applier interface{}) ArchiveOutput {
-	return o.ApplyWithContext(ctx, applier).(ArchiveOutput)
+	return o.ApplyTWithContext(ctx, applier).(ArchiveOutput)
 }
 
-// ApplyArchiveArray is like Apply, but returns a ArchiveArrayOutput.
+// ApplyArchiveArray is like ApplyT, but returns a ArchiveArrayOutput.
 func (o *OutputState) ApplyArchiveArray(applier interface{}) ArchiveArrayOutput {
-	return o.Apply(applier).(ArchiveArrayOutput)
+	return o.ApplyT(applier).(ArchiveArrayOutput)
 }
 
-// ApplyArchiveArrayWithContext is like ApplyWithContext, but returns a ArchiveArrayOutput.
+// ApplyArchiveArrayWithContext is like ApplyTWithContext, but returns a ArchiveArrayOutput.
 func (o *OutputState) ApplyArchiveArrayWithContext(ctx context.Context, applier interface{}) ArchiveArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(ArchiveArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayOutput)
 }
 
-// ApplyArchiveMap is like Apply, but returns a ArchiveMapOutput.
+// ApplyArchiveMap is like ApplyT, but returns a ArchiveMapOutput.
 func (o *OutputState) ApplyArchiveMap(applier interface{}) ArchiveMapOutput {
-	return o.Apply(applier).(ArchiveMapOutput)
+	return o.ApplyT(applier).(ArchiveMapOutput)
 }
 
-// ApplyArchiveMapWithContext is like ApplyWithContext, but returns a ArchiveMapOutput.
+// ApplyArchiveMapWithContext is like ApplyTWithContext, but returns a ArchiveMapOutput.
 func (o *OutputState) ApplyArchiveMapWithContext(ctx context.Context, applier interface{}) ArchiveMapOutput {
-	return o.ApplyWithContext(ctx, applier).(ArchiveMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(ArchiveMapOutput)
 }
 
-// ApplyAsset is like Apply, but returns a AssetOutput.
+// ApplyAsset is like ApplyT, but returns a AssetOutput.
 func (o *OutputState) ApplyAsset(applier interface{}) AssetOutput {
-	return o.Apply(applier).(AssetOutput)
+	return o.ApplyT(applier).(AssetOutput)
 }
 
-// ApplyAssetWithContext is like ApplyWithContext, but returns a AssetOutput.
+// ApplyAssetWithContext is like ApplyTWithContext, but returns a AssetOutput.
 func (o *OutputState) ApplyAssetWithContext(ctx context.Context, applier interface{}) AssetOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetOutput)
 }
 
-// ApplyAssetArray is like Apply, but returns a AssetArrayOutput.
+// ApplyAssetArray is like ApplyT, but returns a AssetArrayOutput.
 func (o *OutputState) ApplyAssetArray(applier interface{}) AssetArrayOutput {
-	return o.Apply(applier).(AssetArrayOutput)
+	return o.ApplyT(applier).(AssetArrayOutput)
 }
 
-// ApplyAssetArrayWithContext is like ApplyWithContext, but returns a AssetArrayOutput.
+// ApplyAssetArrayWithContext is like ApplyTWithContext, but returns a AssetArrayOutput.
 func (o *OutputState) ApplyAssetArrayWithContext(ctx context.Context, applier interface{}) AssetArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetArrayOutput)
 }
 
-// ApplyAssetMap is like Apply, but returns a AssetMapOutput.
+// ApplyAssetMap is like ApplyT, but returns a AssetMapOutput.
 func (o *OutputState) ApplyAssetMap(applier interface{}) AssetMapOutput {
-	return o.Apply(applier).(AssetMapOutput)
+	return o.ApplyT(applier).(AssetMapOutput)
 }
 
-// ApplyAssetMapWithContext is like ApplyWithContext, but returns a AssetMapOutput.
+// ApplyAssetMapWithContext is like ApplyTWithContext, but returns a AssetMapOutput.
 func (o *OutputState) ApplyAssetMapWithContext(ctx context.Context, applier interface{}) AssetMapOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetMapOutput)
 }
 
-// ApplyAssetOrArchive is like Apply, but returns a AssetOrArchiveOutput.
+// ApplyAssetOrArchive is like ApplyT, but returns a AssetOrArchiveOutput.
 func (o *OutputState) ApplyAssetOrArchive(applier interface{}) AssetOrArchiveOutput {
-	return o.Apply(applier).(AssetOrArchiveOutput)
+	return o.ApplyT(applier).(AssetOrArchiveOutput)
 }
 
-// ApplyAssetOrArchiveWithContext is like ApplyWithContext, but returns a AssetOrArchiveOutput.
+// ApplyAssetOrArchiveWithContext is like ApplyTWithContext, but returns a AssetOrArchiveOutput.
 func (o *OutputState) ApplyAssetOrArchiveWithContext(ctx context.Context, applier interface{}) AssetOrArchiveOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetOrArchiveOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveOutput)
 }
 
-// ApplyAssetOrArchiveArray is like Apply, but returns a AssetOrArchiveArrayOutput.
+// ApplyAssetOrArchiveArray is like ApplyT, but returns a AssetOrArchiveArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveArray(applier interface{}) AssetOrArchiveArrayOutput {
-	return o.Apply(applier).(AssetOrArchiveArrayOutput)
+	return o.ApplyT(applier).(AssetOrArchiveArrayOutput)
 }
 
-// ApplyAssetOrArchiveArrayWithContext is like ApplyWithContext, but returns a AssetOrArchiveArrayOutput.
+// ApplyAssetOrArchiveArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetOrArchiveArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayOutput)
 }
 
-// ApplyAssetOrArchiveMap is like Apply, but returns a AssetOrArchiveMapOutput.
+// ApplyAssetOrArchiveMap is like ApplyT, but returns a AssetOrArchiveMapOutput.
 func (o *OutputState) ApplyAssetOrArchiveMap(applier interface{}) AssetOrArchiveMapOutput {
-	return o.Apply(applier).(AssetOrArchiveMapOutput)
+	return o.ApplyT(applier).(AssetOrArchiveMapOutput)
 }
 
-// ApplyAssetOrArchiveMapWithContext is like ApplyWithContext, but returns a AssetOrArchiveMapOutput.
+// ApplyAssetOrArchiveMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapOutput.
 func (o *OutputState) ApplyAssetOrArchiveMapWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapOutput {
-	return o.ApplyWithContext(ctx, applier).(AssetOrArchiveMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapOutput)
 }
 
-// ApplyBool is like Apply, but returns a BoolOutput.
+// ApplyBool is like ApplyT, but returns a BoolOutput.
 func (o *OutputState) ApplyBool(applier interface{}) BoolOutput {
-	return o.Apply(applier).(BoolOutput)
+	return o.ApplyT(applier).(BoolOutput)
 }
 
-// ApplyBoolWithContext is like ApplyWithContext, but returns a BoolOutput.
+// ApplyBoolWithContext is like ApplyTWithContext, but returns a BoolOutput.
 func (o *OutputState) ApplyBoolWithContext(ctx context.Context, applier interface{}) BoolOutput {
-	return o.ApplyWithContext(ctx, applier).(BoolOutput)
+	return o.ApplyTWithContext(ctx, applier).(BoolOutput)
 }
 
-// ApplyBoolArray is like Apply, but returns a BoolArrayOutput.
+// ApplyBoolArray is like ApplyT, but returns a BoolArrayOutput.
 func (o *OutputState) ApplyBoolArray(applier interface{}) BoolArrayOutput {
-	return o.Apply(applier).(BoolArrayOutput)
+	return o.ApplyT(applier).(BoolArrayOutput)
 }
 
-// ApplyBoolArrayWithContext is like ApplyWithContext, but returns a BoolArrayOutput.
+// ApplyBoolArrayWithContext is like ApplyTWithContext, but returns a BoolArrayOutput.
 func (o *OutputState) ApplyBoolArrayWithContext(ctx context.Context, applier interface{}) BoolArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(BoolArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(BoolArrayOutput)
 }
 
-// ApplyBoolMap is like Apply, but returns a BoolMapOutput.
+// ApplyBoolMap is like ApplyT, but returns a BoolMapOutput.
 func (o *OutputState) ApplyBoolMap(applier interface{}) BoolMapOutput {
-	return o.Apply(applier).(BoolMapOutput)
+	return o.ApplyT(applier).(BoolMapOutput)
 }
 
-// ApplyBoolMapWithContext is like ApplyWithContext, but returns a BoolMapOutput.
+// ApplyBoolMapWithContext is like ApplyTWithContext, but returns a BoolMapOutput.
 func (o *OutputState) ApplyBoolMapWithContext(ctx context.Context, applier interface{}) BoolMapOutput {
-	return o.ApplyWithContext(ctx, applier).(BoolMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(BoolMapOutput)
 }
 
-// ApplyFloat32 is like Apply, but returns a Float32Output.
+// ApplyFloat32 is like ApplyT, but returns a Float32Output.
 func (o *OutputState) ApplyFloat32(applier interface{}) Float32Output {
-	return o.Apply(applier).(Float32Output)
+	return o.ApplyT(applier).(Float32Output)
 }
 
-// ApplyFloat32WithContext is like ApplyWithContext, but returns a Float32Output.
+// ApplyFloat32WithContext is like ApplyTWithContext, but returns a Float32Output.
 func (o *OutputState) ApplyFloat32WithContext(ctx context.Context, applier interface{}) Float32Output {
-	return o.ApplyWithContext(ctx, applier).(Float32Output)
+	return o.ApplyTWithContext(ctx, applier).(Float32Output)
 }
 
-// ApplyFloat32Array is like Apply, but returns a Float32ArrayOutput.
+// ApplyFloat32Array is like ApplyT, but returns a Float32ArrayOutput.
 func (o *OutputState) ApplyFloat32Array(applier interface{}) Float32ArrayOutput {
-	return o.Apply(applier).(Float32ArrayOutput)
+	return o.ApplyT(applier).(Float32ArrayOutput)
 }
 
-// ApplyFloat32ArrayWithContext is like ApplyWithContext, but returns a Float32ArrayOutput.
+// ApplyFloat32ArrayWithContext is like ApplyTWithContext, but returns a Float32ArrayOutput.
 func (o *OutputState) ApplyFloat32ArrayWithContext(ctx context.Context, applier interface{}) Float32ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Float32ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Float32ArrayOutput)
 }
 
-// ApplyFloat32Map is like Apply, but returns a Float32MapOutput.
+// ApplyFloat32Map is like ApplyT, but returns a Float32MapOutput.
 func (o *OutputState) ApplyFloat32Map(applier interface{}) Float32MapOutput {
-	return o.Apply(applier).(Float32MapOutput)
+	return o.ApplyT(applier).(Float32MapOutput)
 }
 
-// ApplyFloat32MapWithContext is like ApplyWithContext, but returns a Float32MapOutput.
+// ApplyFloat32MapWithContext is like ApplyTWithContext, but returns a Float32MapOutput.
 func (o *OutputState) ApplyFloat32MapWithContext(ctx context.Context, applier interface{}) Float32MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Float32MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Float32MapOutput)
 }
 
-// ApplyFloat64 is like Apply, but returns a Float64Output.
+// ApplyFloat64 is like ApplyT, but returns a Float64Output.
 func (o *OutputState) ApplyFloat64(applier interface{}) Float64Output {
-	return o.Apply(applier).(Float64Output)
+	return o.ApplyT(applier).(Float64Output)
 }
 
-// ApplyFloat64WithContext is like ApplyWithContext, but returns a Float64Output.
+// ApplyFloat64WithContext is like ApplyTWithContext, but returns a Float64Output.
 func (o *OutputState) ApplyFloat64WithContext(ctx context.Context, applier interface{}) Float64Output {
-	return o.ApplyWithContext(ctx, applier).(Float64Output)
+	return o.ApplyTWithContext(ctx, applier).(Float64Output)
 }
 
-// ApplyFloat64Array is like Apply, but returns a Float64ArrayOutput.
+// ApplyFloat64Array is like ApplyT, but returns a Float64ArrayOutput.
 func (o *OutputState) ApplyFloat64Array(applier interface{}) Float64ArrayOutput {
-	return o.Apply(applier).(Float64ArrayOutput)
+	return o.ApplyT(applier).(Float64ArrayOutput)
 }
 
-// ApplyFloat64ArrayWithContext is like ApplyWithContext, but returns a Float64ArrayOutput.
+// ApplyFloat64ArrayWithContext is like ApplyTWithContext, but returns a Float64ArrayOutput.
 func (o *OutputState) ApplyFloat64ArrayWithContext(ctx context.Context, applier interface{}) Float64ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Float64ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Float64ArrayOutput)
 }
 
-// ApplyFloat64Map is like Apply, but returns a Float64MapOutput.
+// ApplyFloat64Map is like ApplyT, but returns a Float64MapOutput.
 func (o *OutputState) ApplyFloat64Map(applier interface{}) Float64MapOutput {
-	return o.Apply(applier).(Float64MapOutput)
+	return o.ApplyT(applier).(Float64MapOutput)
 }
 
-// ApplyFloat64MapWithContext is like ApplyWithContext, but returns a Float64MapOutput.
+// ApplyFloat64MapWithContext is like ApplyTWithContext, but returns a Float64MapOutput.
 func (o *OutputState) ApplyFloat64MapWithContext(ctx context.Context, applier interface{}) Float64MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Float64MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Float64MapOutput)
 }
 
-// ApplyID is like Apply, but returns a IDOutput.
+// ApplyID is like ApplyT, but returns a IDOutput.
 func (o *OutputState) ApplyID(applier interface{}) IDOutput {
-	return o.Apply(applier).(IDOutput)
+	return o.ApplyT(applier).(IDOutput)
 }
 
-// ApplyIDWithContext is like ApplyWithContext, but returns a IDOutput.
+// ApplyIDWithContext is like ApplyTWithContext, but returns a IDOutput.
 func (o *OutputState) ApplyIDWithContext(ctx context.Context, applier interface{}) IDOutput {
-	return o.ApplyWithContext(ctx, applier).(IDOutput)
+	return o.ApplyTWithContext(ctx, applier).(IDOutput)
 }
 
-// ApplyIDArray is like Apply, but returns a IDArrayOutput.
+// ApplyIDArray is like ApplyT, but returns a IDArrayOutput.
 func (o *OutputState) ApplyIDArray(applier interface{}) IDArrayOutput {
-	return o.Apply(applier).(IDArrayOutput)
+	return o.ApplyT(applier).(IDArrayOutput)
 }
 
-// ApplyIDArrayWithContext is like ApplyWithContext, but returns a IDArrayOutput.
+// ApplyIDArrayWithContext is like ApplyTWithContext, but returns a IDArrayOutput.
 func (o *OutputState) ApplyIDArrayWithContext(ctx context.Context, applier interface{}) IDArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(IDArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(IDArrayOutput)
 }
 
-// ApplyIDMap is like Apply, but returns a IDMapOutput.
+// ApplyIDMap is like ApplyT, but returns a IDMapOutput.
 func (o *OutputState) ApplyIDMap(applier interface{}) IDMapOutput {
-	return o.Apply(applier).(IDMapOutput)
+	return o.ApplyT(applier).(IDMapOutput)
 }
 
-// ApplyIDMapWithContext is like ApplyWithContext, but returns a IDMapOutput.
+// ApplyIDMapWithContext is like ApplyTWithContext, but returns a IDMapOutput.
 func (o *OutputState) ApplyIDMapWithContext(ctx context.Context, applier interface{}) IDMapOutput {
-	return o.ApplyWithContext(ctx, applier).(IDMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(IDMapOutput)
 }
 
-// ApplyArray is like Apply, but returns a ArrayOutput.
+// ApplyArray is like ApplyT, but returns a ArrayOutput.
 func (o *OutputState) ApplyArray(applier interface{}) ArrayOutput {
-	return o.Apply(applier).(ArrayOutput)
+	return o.ApplyT(applier).(ArrayOutput)
 }
 
-// ApplyArrayWithContext is like ApplyWithContext, but returns a ArrayOutput.
+// ApplyArrayWithContext is like ApplyTWithContext, but returns a ArrayOutput.
 func (o *OutputState) ApplyArrayWithContext(ctx context.Context, applier interface{}) ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(ArrayOutput)
 }
 
-// ApplyMap is like Apply, but returns a MapOutput.
+// ApplyMap is like ApplyT, but returns a MapOutput.
 func (o *OutputState) ApplyMap(applier interface{}) MapOutput {
-	return o.Apply(applier).(MapOutput)
+	return o.ApplyT(applier).(MapOutput)
 }
 
-// ApplyMapWithContext is like ApplyWithContext, but returns a MapOutput.
+// ApplyMapWithContext is like ApplyTWithContext, but returns a MapOutput.
 func (o *OutputState) ApplyMapWithContext(ctx context.Context, applier interface{}) MapOutput {
-	return o.ApplyWithContext(ctx, applier).(MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(MapOutput)
 }
 
-// ApplyInt is like Apply, but returns a IntOutput.
+// ApplyInt is like ApplyT, but returns a IntOutput.
 func (o *OutputState) ApplyInt(applier interface{}) IntOutput {
-	return o.Apply(applier).(IntOutput)
+	return o.ApplyT(applier).(IntOutput)
 }
 
-// ApplyIntWithContext is like ApplyWithContext, but returns a IntOutput.
+// ApplyIntWithContext is like ApplyTWithContext, but returns a IntOutput.
 func (o *OutputState) ApplyIntWithContext(ctx context.Context, applier interface{}) IntOutput {
-	return o.ApplyWithContext(ctx, applier).(IntOutput)
+	return o.ApplyTWithContext(ctx, applier).(IntOutput)
 }
 
-// ApplyIntArray is like Apply, but returns a IntArrayOutput.
+// ApplyIntArray is like ApplyT, but returns a IntArrayOutput.
 func (o *OutputState) ApplyIntArray(applier interface{}) IntArrayOutput {
-	return o.Apply(applier).(IntArrayOutput)
+	return o.ApplyT(applier).(IntArrayOutput)
 }
 
-// ApplyIntArrayWithContext is like ApplyWithContext, but returns a IntArrayOutput.
+// ApplyIntArrayWithContext is like ApplyTWithContext, but returns a IntArrayOutput.
 func (o *OutputState) ApplyIntArrayWithContext(ctx context.Context, applier interface{}) IntArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(IntArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(IntArrayOutput)
 }
 
-// ApplyIntMap is like Apply, but returns a IntMapOutput.
+// ApplyIntMap is like ApplyT, but returns a IntMapOutput.
 func (o *OutputState) ApplyIntMap(applier interface{}) IntMapOutput {
-	return o.Apply(applier).(IntMapOutput)
+	return o.ApplyT(applier).(IntMapOutput)
 }
 
-// ApplyIntMapWithContext is like ApplyWithContext, but returns a IntMapOutput.
+// ApplyIntMapWithContext is like ApplyTWithContext, but returns a IntMapOutput.
 func (o *OutputState) ApplyIntMapWithContext(ctx context.Context, applier interface{}) IntMapOutput {
-	return o.ApplyWithContext(ctx, applier).(IntMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(IntMapOutput)
 }
 
-// ApplyInt16 is like Apply, but returns a Int16Output.
+// ApplyInt16 is like ApplyT, but returns a Int16Output.
 func (o *OutputState) ApplyInt16(applier interface{}) Int16Output {
-	return o.Apply(applier).(Int16Output)
+	return o.ApplyT(applier).(Int16Output)
 }
 
-// ApplyInt16WithContext is like ApplyWithContext, but returns a Int16Output.
+// ApplyInt16WithContext is like ApplyTWithContext, but returns a Int16Output.
 func (o *OutputState) ApplyInt16WithContext(ctx context.Context, applier interface{}) Int16Output {
-	return o.ApplyWithContext(ctx, applier).(Int16Output)
+	return o.ApplyTWithContext(ctx, applier).(Int16Output)
 }
 
-// ApplyInt16Array is like Apply, but returns a Int16ArrayOutput.
+// ApplyInt16Array is like ApplyT, but returns a Int16ArrayOutput.
 func (o *OutputState) ApplyInt16Array(applier interface{}) Int16ArrayOutput {
-	return o.Apply(applier).(Int16ArrayOutput)
+	return o.ApplyT(applier).(Int16ArrayOutput)
 }
 
-// ApplyInt16ArrayWithContext is like ApplyWithContext, but returns a Int16ArrayOutput.
+// ApplyInt16ArrayWithContext is like ApplyTWithContext, but returns a Int16ArrayOutput.
 func (o *OutputState) ApplyInt16ArrayWithContext(ctx context.Context, applier interface{}) Int16ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Int16ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int16ArrayOutput)
 }
 
-// ApplyInt16Map is like Apply, but returns a Int16MapOutput.
+// ApplyInt16Map is like ApplyT, but returns a Int16MapOutput.
 func (o *OutputState) ApplyInt16Map(applier interface{}) Int16MapOutput {
-	return o.Apply(applier).(Int16MapOutput)
+	return o.ApplyT(applier).(Int16MapOutput)
 }
 
-// ApplyInt16MapWithContext is like ApplyWithContext, but returns a Int16MapOutput.
+// ApplyInt16MapWithContext is like ApplyTWithContext, but returns a Int16MapOutput.
 func (o *OutputState) ApplyInt16MapWithContext(ctx context.Context, applier interface{}) Int16MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Int16MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int16MapOutput)
 }
 
-// ApplyInt32 is like Apply, but returns a Int32Output.
+// ApplyInt32 is like ApplyT, but returns a Int32Output.
 func (o *OutputState) ApplyInt32(applier interface{}) Int32Output {
-	return o.Apply(applier).(Int32Output)
+	return o.ApplyT(applier).(Int32Output)
 }
 
-// ApplyInt32WithContext is like ApplyWithContext, but returns a Int32Output.
+// ApplyInt32WithContext is like ApplyTWithContext, but returns a Int32Output.
 func (o *OutputState) ApplyInt32WithContext(ctx context.Context, applier interface{}) Int32Output {
-	return o.ApplyWithContext(ctx, applier).(Int32Output)
+	return o.ApplyTWithContext(ctx, applier).(Int32Output)
 }
 
-// ApplyInt32Array is like Apply, but returns a Int32ArrayOutput.
+// ApplyInt32Array is like ApplyT, but returns a Int32ArrayOutput.
 func (o *OutputState) ApplyInt32Array(applier interface{}) Int32ArrayOutput {
-	return o.Apply(applier).(Int32ArrayOutput)
+	return o.ApplyT(applier).(Int32ArrayOutput)
 }
 
-// ApplyInt32ArrayWithContext is like ApplyWithContext, but returns a Int32ArrayOutput.
+// ApplyInt32ArrayWithContext is like ApplyTWithContext, but returns a Int32ArrayOutput.
 func (o *OutputState) ApplyInt32ArrayWithContext(ctx context.Context, applier interface{}) Int32ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Int32ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int32ArrayOutput)
 }
 
-// ApplyInt32Map is like Apply, but returns a Int32MapOutput.
+// ApplyInt32Map is like ApplyT, but returns a Int32MapOutput.
 func (o *OutputState) ApplyInt32Map(applier interface{}) Int32MapOutput {
-	return o.Apply(applier).(Int32MapOutput)
+	return o.ApplyT(applier).(Int32MapOutput)
 }
 
-// ApplyInt32MapWithContext is like ApplyWithContext, but returns a Int32MapOutput.
+// ApplyInt32MapWithContext is like ApplyTWithContext, but returns a Int32MapOutput.
 func (o *OutputState) ApplyInt32MapWithContext(ctx context.Context, applier interface{}) Int32MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Int32MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int32MapOutput)
 }
 
-// ApplyInt64 is like Apply, but returns a Int64Output.
+// ApplyInt64 is like ApplyT, but returns a Int64Output.
 func (o *OutputState) ApplyInt64(applier interface{}) Int64Output {
-	return o.Apply(applier).(Int64Output)
+	return o.ApplyT(applier).(Int64Output)
 }
 
-// ApplyInt64WithContext is like ApplyWithContext, but returns a Int64Output.
+// ApplyInt64WithContext is like ApplyTWithContext, but returns a Int64Output.
 func (o *OutputState) ApplyInt64WithContext(ctx context.Context, applier interface{}) Int64Output {
-	return o.ApplyWithContext(ctx, applier).(Int64Output)
+	return o.ApplyTWithContext(ctx, applier).(Int64Output)
 }
 
-// ApplyInt64Array is like Apply, but returns a Int64ArrayOutput.
+// ApplyInt64Array is like ApplyT, but returns a Int64ArrayOutput.
 func (o *OutputState) ApplyInt64Array(applier interface{}) Int64ArrayOutput {
-	return o.Apply(applier).(Int64ArrayOutput)
+	return o.ApplyT(applier).(Int64ArrayOutput)
 }
 
-// ApplyInt64ArrayWithContext is like ApplyWithContext, but returns a Int64ArrayOutput.
+// ApplyInt64ArrayWithContext is like ApplyTWithContext, but returns a Int64ArrayOutput.
 func (o *OutputState) ApplyInt64ArrayWithContext(ctx context.Context, applier interface{}) Int64ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Int64ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int64ArrayOutput)
 }
 
-// ApplyInt64Map is like Apply, but returns a Int64MapOutput.
+// ApplyInt64Map is like ApplyT, but returns a Int64MapOutput.
 func (o *OutputState) ApplyInt64Map(applier interface{}) Int64MapOutput {
-	return o.Apply(applier).(Int64MapOutput)
+	return o.ApplyT(applier).(Int64MapOutput)
 }
 
-// ApplyInt64MapWithContext is like ApplyWithContext, but returns a Int64MapOutput.
+// ApplyInt64MapWithContext is like ApplyTWithContext, but returns a Int64MapOutput.
 func (o *OutputState) ApplyInt64MapWithContext(ctx context.Context, applier interface{}) Int64MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Int64MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int64MapOutput)
 }
 
-// ApplyInt8 is like Apply, but returns a Int8Output.
+// ApplyInt8 is like ApplyT, but returns a Int8Output.
 func (o *OutputState) ApplyInt8(applier interface{}) Int8Output {
-	return o.Apply(applier).(Int8Output)
+	return o.ApplyT(applier).(Int8Output)
 }
 
-// ApplyInt8WithContext is like ApplyWithContext, but returns a Int8Output.
+// ApplyInt8WithContext is like ApplyTWithContext, but returns a Int8Output.
 func (o *OutputState) ApplyInt8WithContext(ctx context.Context, applier interface{}) Int8Output {
-	return o.ApplyWithContext(ctx, applier).(Int8Output)
+	return o.ApplyTWithContext(ctx, applier).(Int8Output)
 }
 
-// ApplyInt8Array is like Apply, but returns a Int8ArrayOutput.
+// ApplyInt8Array is like ApplyT, but returns a Int8ArrayOutput.
 func (o *OutputState) ApplyInt8Array(applier interface{}) Int8ArrayOutput {
-	return o.Apply(applier).(Int8ArrayOutput)
+	return o.ApplyT(applier).(Int8ArrayOutput)
 }
 
-// ApplyInt8ArrayWithContext is like ApplyWithContext, but returns a Int8ArrayOutput.
+// ApplyInt8ArrayWithContext is like ApplyTWithContext, but returns a Int8ArrayOutput.
 func (o *OutputState) ApplyInt8ArrayWithContext(ctx context.Context, applier interface{}) Int8ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Int8ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int8ArrayOutput)
 }
 
-// ApplyInt8Map is like Apply, but returns a Int8MapOutput.
+// ApplyInt8Map is like ApplyT, but returns a Int8MapOutput.
 func (o *OutputState) ApplyInt8Map(applier interface{}) Int8MapOutput {
-	return o.Apply(applier).(Int8MapOutput)
+	return o.ApplyT(applier).(Int8MapOutput)
 }
 
-// ApplyInt8MapWithContext is like ApplyWithContext, but returns a Int8MapOutput.
+// ApplyInt8MapWithContext is like ApplyTWithContext, but returns a Int8MapOutput.
 func (o *OutputState) ApplyInt8MapWithContext(ctx context.Context, applier interface{}) Int8MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Int8MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Int8MapOutput)
 }
 
-// ApplyString is like Apply, but returns a StringOutput.
+// ApplyString is like ApplyT, but returns a StringOutput.
 func (o *OutputState) ApplyString(applier interface{}) StringOutput {
-	return o.Apply(applier).(StringOutput)
+	return o.ApplyT(applier).(StringOutput)
 }
 
-// ApplyStringWithContext is like ApplyWithContext, but returns a StringOutput.
+// ApplyStringWithContext is like ApplyTWithContext, but returns a StringOutput.
 func (o *OutputState) ApplyStringWithContext(ctx context.Context, applier interface{}) StringOutput {
-	return o.ApplyWithContext(ctx, applier).(StringOutput)
+	return o.ApplyTWithContext(ctx, applier).(StringOutput)
 }
 
-// ApplyStringArray is like Apply, but returns a StringArrayOutput.
+// ApplyStringArray is like ApplyT, but returns a StringArrayOutput.
 func (o *OutputState) ApplyStringArray(applier interface{}) StringArrayOutput {
-	return o.Apply(applier).(StringArrayOutput)
+	return o.ApplyT(applier).(StringArrayOutput)
 }
 
-// ApplyStringArrayWithContext is like ApplyWithContext, but returns a StringArrayOutput.
+// ApplyStringArrayWithContext is like ApplyTWithContext, but returns a StringArrayOutput.
 func (o *OutputState) ApplyStringArrayWithContext(ctx context.Context, applier interface{}) StringArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(StringArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(StringArrayOutput)
 }
 
-// ApplyStringMap is like Apply, but returns a StringMapOutput.
+// ApplyStringMap is like ApplyT, but returns a StringMapOutput.
 func (o *OutputState) ApplyStringMap(applier interface{}) StringMapOutput {
-	return o.Apply(applier).(StringMapOutput)
+	return o.ApplyT(applier).(StringMapOutput)
 }
 
-// ApplyStringMapWithContext is like ApplyWithContext, but returns a StringMapOutput.
+// ApplyStringMapWithContext is like ApplyTWithContext, but returns a StringMapOutput.
 func (o *OutputState) ApplyStringMapWithContext(ctx context.Context, applier interface{}) StringMapOutput {
-	return o.ApplyWithContext(ctx, applier).(StringMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(StringMapOutput)
 }
 
-// ApplyURN is like Apply, but returns a URNOutput.
+// ApplyURN is like ApplyT, but returns a URNOutput.
 func (o *OutputState) ApplyURN(applier interface{}) URNOutput {
-	return o.Apply(applier).(URNOutput)
+	return o.ApplyT(applier).(URNOutput)
 }
 
-// ApplyURNWithContext is like ApplyWithContext, but returns a URNOutput.
+// ApplyURNWithContext is like ApplyTWithContext, but returns a URNOutput.
 func (o *OutputState) ApplyURNWithContext(ctx context.Context, applier interface{}) URNOutput {
-	return o.ApplyWithContext(ctx, applier).(URNOutput)
+	return o.ApplyTWithContext(ctx, applier).(URNOutput)
 }
 
-// ApplyURNArray is like Apply, but returns a URNArrayOutput.
+// ApplyURNArray is like ApplyT, but returns a URNArrayOutput.
 func (o *OutputState) ApplyURNArray(applier interface{}) URNArrayOutput {
-	return o.Apply(applier).(URNArrayOutput)
+	return o.ApplyT(applier).(URNArrayOutput)
 }
 
-// ApplyURNArrayWithContext is like ApplyWithContext, but returns a URNArrayOutput.
+// ApplyURNArrayWithContext is like ApplyTWithContext, but returns a URNArrayOutput.
 func (o *OutputState) ApplyURNArrayWithContext(ctx context.Context, applier interface{}) URNArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(URNArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(URNArrayOutput)
 }
 
-// ApplyURNMap is like Apply, but returns a URNMapOutput.
+// ApplyURNMap is like ApplyT, but returns a URNMapOutput.
 func (o *OutputState) ApplyURNMap(applier interface{}) URNMapOutput {
-	return o.Apply(applier).(URNMapOutput)
+	return o.ApplyT(applier).(URNMapOutput)
 }
 
-// ApplyURNMapWithContext is like ApplyWithContext, but returns a URNMapOutput.
+// ApplyURNMapWithContext is like ApplyTWithContext, but returns a URNMapOutput.
 func (o *OutputState) ApplyURNMapWithContext(ctx context.Context, applier interface{}) URNMapOutput {
-	return o.ApplyWithContext(ctx, applier).(URNMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(URNMapOutput)
 }
 
-// ApplyUint is like Apply, but returns a UintOutput.
+// ApplyUint is like ApplyT, but returns a UintOutput.
 func (o *OutputState) ApplyUint(applier interface{}) UintOutput {
-	return o.Apply(applier).(UintOutput)
+	return o.ApplyT(applier).(UintOutput)
 }
 
-// ApplyUintWithContext is like ApplyWithContext, but returns a UintOutput.
+// ApplyUintWithContext is like ApplyTWithContext, but returns a UintOutput.
 func (o *OutputState) ApplyUintWithContext(ctx context.Context, applier interface{}) UintOutput {
-	return o.ApplyWithContext(ctx, applier).(UintOutput)
+	return o.ApplyTWithContext(ctx, applier).(UintOutput)
 }
 
-// ApplyUintArray is like Apply, but returns a UintArrayOutput.
+// ApplyUintArray is like ApplyT, but returns a UintArrayOutput.
 func (o *OutputState) ApplyUintArray(applier interface{}) UintArrayOutput {
-	return o.Apply(applier).(UintArrayOutput)
+	return o.ApplyT(applier).(UintArrayOutput)
 }
 
-// ApplyUintArrayWithContext is like ApplyWithContext, but returns a UintArrayOutput.
+// ApplyUintArrayWithContext is like ApplyTWithContext, but returns a UintArrayOutput.
 func (o *OutputState) ApplyUintArrayWithContext(ctx context.Context, applier interface{}) UintArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(UintArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(UintArrayOutput)
 }
 
-// ApplyUintMap is like Apply, but returns a UintMapOutput.
+// ApplyUintMap is like ApplyT, but returns a UintMapOutput.
 func (o *OutputState) ApplyUintMap(applier interface{}) UintMapOutput {
-	return o.Apply(applier).(UintMapOutput)
+	return o.ApplyT(applier).(UintMapOutput)
 }
 
-// ApplyUintMapWithContext is like ApplyWithContext, but returns a UintMapOutput.
+// ApplyUintMapWithContext is like ApplyTWithContext, but returns a UintMapOutput.
 func (o *OutputState) ApplyUintMapWithContext(ctx context.Context, applier interface{}) UintMapOutput {
-	return o.ApplyWithContext(ctx, applier).(UintMapOutput)
+	return o.ApplyTWithContext(ctx, applier).(UintMapOutput)
 }
 
-// ApplyUint16 is like Apply, but returns a Uint16Output.
+// ApplyUint16 is like ApplyT, but returns a Uint16Output.
 func (o *OutputState) ApplyUint16(applier interface{}) Uint16Output {
-	return o.Apply(applier).(Uint16Output)
+	return o.ApplyT(applier).(Uint16Output)
 }
 
-// ApplyUint16WithContext is like ApplyWithContext, but returns a Uint16Output.
+// ApplyUint16WithContext is like ApplyTWithContext, but returns a Uint16Output.
 func (o *OutputState) ApplyUint16WithContext(ctx context.Context, applier interface{}) Uint16Output {
-	return o.ApplyWithContext(ctx, applier).(Uint16Output)
+	return o.ApplyTWithContext(ctx, applier).(Uint16Output)
 }
 
-// ApplyUint16Array is like Apply, but returns a Uint16ArrayOutput.
+// ApplyUint16Array is like ApplyT, but returns a Uint16ArrayOutput.
 func (o *OutputState) ApplyUint16Array(applier interface{}) Uint16ArrayOutput {
-	return o.Apply(applier).(Uint16ArrayOutput)
+	return o.ApplyT(applier).(Uint16ArrayOutput)
 }
 
-// ApplyUint16ArrayWithContext is like ApplyWithContext, but returns a Uint16ArrayOutput.
+// ApplyUint16ArrayWithContext is like ApplyTWithContext, but returns a Uint16ArrayOutput.
 func (o *OutputState) ApplyUint16ArrayWithContext(ctx context.Context, applier interface{}) Uint16ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint16ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint16ArrayOutput)
 }
 
-// ApplyUint16Map is like Apply, but returns a Uint16MapOutput.
+// ApplyUint16Map is like ApplyT, but returns a Uint16MapOutput.
 func (o *OutputState) ApplyUint16Map(applier interface{}) Uint16MapOutput {
-	return o.Apply(applier).(Uint16MapOutput)
+	return o.ApplyT(applier).(Uint16MapOutput)
 }
 
-// ApplyUint16MapWithContext is like ApplyWithContext, but returns a Uint16MapOutput.
+// ApplyUint16MapWithContext is like ApplyTWithContext, but returns a Uint16MapOutput.
 func (o *OutputState) ApplyUint16MapWithContext(ctx context.Context, applier interface{}) Uint16MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint16MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint16MapOutput)
 }
 
-// ApplyUint32 is like Apply, but returns a Uint32Output.
+// ApplyUint32 is like ApplyT, but returns a Uint32Output.
 func (o *OutputState) ApplyUint32(applier interface{}) Uint32Output {
-	return o.Apply(applier).(Uint32Output)
+	return o.ApplyT(applier).(Uint32Output)
 }
 
-// ApplyUint32WithContext is like ApplyWithContext, but returns a Uint32Output.
+// ApplyUint32WithContext is like ApplyTWithContext, but returns a Uint32Output.
 func (o *OutputState) ApplyUint32WithContext(ctx context.Context, applier interface{}) Uint32Output {
-	return o.ApplyWithContext(ctx, applier).(Uint32Output)
+	return o.ApplyTWithContext(ctx, applier).(Uint32Output)
 }
 
-// ApplyUint32Array is like Apply, but returns a Uint32ArrayOutput.
+// ApplyUint32Array is like ApplyT, but returns a Uint32ArrayOutput.
 func (o *OutputState) ApplyUint32Array(applier interface{}) Uint32ArrayOutput {
-	return o.Apply(applier).(Uint32ArrayOutput)
+	return o.ApplyT(applier).(Uint32ArrayOutput)
 }
 
-// ApplyUint32ArrayWithContext is like ApplyWithContext, but returns a Uint32ArrayOutput.
+// ApplyUint32ArrayWithContext is like ApplyTWithContext, but returns a Uint32ArrayOutput.
 func (o *OutputState) ApplyUint32ArrayWithContext(ctx context.Context, applier interface{}) Uint32ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint32ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint32ArrayOutput)
 }
 
-// ApplyUint32Map is like Apply, but returns a Uint32MapOutput.
+// ApplyUint32Map is like ApplyT, but returns a Uint32MapOutput.
 func (o *OutputState) ApplyUint32Map(applier interface{}) Uint32MapOutput {
-	return o.Apply(applier).(Uint32MapOutput)
+	return o.ApplyT(applier).(Uint32MapOutput)
 }
 
-// ApplyUint32MapWithContext is like ApplyWithContext, but returns a Uint32MapOutput.
+// ApplyUint32MapWithContext is like ApplyTWithContext, but returns a Uint32MapOutput.
 func (o *OutputState) ApplyUint32MapWithContext(ctx context.Context, applier interface{}) Uint32MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint32MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint32MapOutput)
 }
 
-// ApplyUint64 is like Apply, but returns a Uint64Output.
+// ApplyUint64 is like ApplyT, but returns a Uint64Output.
 func (o *OutputState) ApplyUint64(applier interface{}) Uint64Output {
-	return o.Apply(applier).(Uint64Output)
+	return o.ApplyT(applier).(Uint64Output)
 }
 
-// ApplyUint64WithContext is like ApplyWithContext, but returns a Uint64Output.
+// ApplyUint64WithContext is like ApplyTWithContext, but returns a Uint64Output.
 func (o *OutputState) ApplyUint64WithContext(ctx context.Context, applier interface{}) Uint64Output {
-	return o.ApplyWithContext(ctx, applier).(Uint64Output)
+	return o.ApplyTWithContext(ctx, applier).(Uint64Output)
 }
 
-// ApplyUint64Array is like Apply, but returns a Uint64ArrayOutput.
+// ApplyUint64Array is like ApplyT, but returns a Uint64ArrayOutput.
 func (o *OutputState) ApplyUint64Array(applier interface{}) Uint64ArrayOutput {
-	return o.Apply(applier).(Uint64ArrayOutput)
+	return o.ApplyT(applier).(Uint64ArrayOutput)
 }
 
-// ApplyUint64ArrayWithContext is like ApplyWithContext, but returns a Uint64ArrayOutput.
+// ApplyUint64ArrayWithContext is like ApplyTWithContext, but returns a Uint64ArrayOutput.
 func (o *OutputState) ApplyUint64ArrayWithContext(ctx context.Context, applier interface{}) Uint64ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint64ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint64ArrayOutput)
 }
 
-// ApplyUint64Map is like Apply, but returns a Uint64MapOutput.
+// ApplyUint64Map is like ApplyT, but returns a Uint64MapOutput.
 func (o *OutputState) ApplyUint64Map(applier interface{}) Uint64MapOutput {
-	return o.Apply(applier).(Uint64MapOutput)
+	return o.ApplyT(applier).(Uint64MapOutput)
 }
 
-// ApplyUint64MapWithContext is like ApplyWithContext, but returns a Uint64MapOutput.
+// ApplyUint64MapWithContext is like ApplyTWithContext, but returns a Uint64MapOutput.
 func (o *OutputState) ApplyUint64MapWithContext(ctx context.Context, applier interface{}) Uint64MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint64MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint64MapOutput)
 }
 
-// ApplyUint8 is like Apply, but returns a Uint8Output.
+// ApplyUint8 is like ApplyT, but returns a Uint8Output.
 func (o *OutputState) ApplyUint8(applier interface{}) Uint8Output {
-	return o.Apply(applier).(Uint8Output)
+	return o.ApplyT(applier).(Uint8Output)
 }
 
-// ApplyUint8WithContext is like ApplyWithContext, but returns a Uint8Output.
+// ApplyUint8WithContext is like ApplyTWithContext, but returns a Uint8Output.
 func (o *OutputState) ApplyUint8WithContext(ctx context.Context, applier interface{}) Uint8Output {
-	return o.ApplyWithContext(ctx, applier).(Uint8Output)
+	return o.ApplyTWithContext(ctx, applier).(Uint8Output)
 }
 
-// ApplyUint8Array is like Apply, but returns a Uint8ArrayOutput.
+// ApplyUint8Array is like ApplyT, but returns a Uint8ArrayOutput.
 func (o *OutputState) ApplyUint8Array(applier interface{}) Uint8ArrayOutput {
-	return o.Apply(applier).(Uint8ArrayOutput)
+	return o.ApplyT(applier).(Uint8ArrayOutput)
 }
 
-// ApplyUint8ArrayWithContext is like ApplyWithContext, but returns a Uint8ArrayOutput.
+// ApplyUint8ArrayWithContext is like ApplyTWithContext, but returns a Uint8ArrayOutput.
 func (o *OutputState) ApplyUint8ArrayWithContext(ctx context.Context, applier interface{}) Uint8ArrayOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint8ArrayOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint8ArrayOutput)
 }
 
-// ApplyUint8Map is like Apply, but returns a Uint8MapOutput.
+// ApplyUint8Map is like ApplyT, but returns a Uint8MapOutput.
 func (o *OutputState) ApplyUint8Map(applier interface{}) Uint8MapOutput {
-	return o.Apply(applier).(Uint8MapOutput)
+	return o.ApplyT(applier).(Uint8MapOutput)
 }
 
-// ApplyUint8MapWithContext is like ApplyWithContext, but returns a Uint8MapOutput.
+// ApplyUint8MapWithContext is like ApplyTWithContext, but returns a Uint8MapOutput.
 func (o *OutputState) ApplyUint8MapWithContext(ctx context.Context, applier interface{}) Uint8MapOutput {
-	return o.ApplyWithContext(ctx, applier).(Uint8MapOutput)
+	return o.ApplyTWithContext(ctx, applier).(Uint8MapOutput)
 }
 
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
@@ -1305,7 +1369,7 @@ func (o ArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 func (o ArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return o.ApplyWithContext(ctx, func(_ context.Context, v Archive) AssetOrArchive {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Archive) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
 }
@@ -1353,7 +1417,7 @@ func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context)
 }
 
 func (o ArchiveArrayOutput) Index(i IntInput) ArchiveOutput {
-	return All(o, i).Apply(func(vs []interface{}) Archive {
+	return All(o, i).ApplyT(func(vs []interface{}) Archive {
 		return vs[0].([]Archive)[vs[1].(int)]
 	}).(ArchiveOutput)
 }
@@ -1401,7 +1465,7 @@ func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) Arc
 }
 
 func (o ArchiveMapOutput) MapIndex(k StringInput) ArchiveOutput {
-	return All(o, k).Apply(func(vs []interface{}) Archive {
+	return All(o, k).ApplyT(func(vs []interface{}) Archive {
 		return vs[0].(map[string]Archive)[vs[1].(string)]
 	}).(ArchiveOutput)
 }
@@ -1458,7 +1522,7 @@ func (o AssetOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 func (o AssetOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
-	return o.ApplyWithContext(ctx, func(_ context.Context, v Asset) AssetOrArchive {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Asset) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
 }
@@ -1506,7 +1570,7 @@ func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) Ass
 }
 
 func (o AssetArrayOutput) Index(i IntInput) AssetOutput {
-	return All(o, i).Apply(func(vs []interface{}) Asset {
+	return All(o, i).ApplyT(func(vs []interface{}) Asset {
 		return vs[0].([]Asset)[vs[1].(int)]
 	}).(AssetOutput)
 }
@@ -1554,7 +1618,7 @@ func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMa
 }
 
 func (o AssetMapOutput) MapIndex(k StringInput) AssetOutput {
-	return All(o, k).Apply(func(vs []interface{}) Asset {
+	return All(o, k).ApplyT(func(vs []interface{}) Asset {
 		return vs[0].(map[string]Asset)[vs[1].(string)]
 	}).(AssetOutput)
 }
@@ -1628,7 +1692,7 @@ func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx co
 }
 
 func (o AssetOrArchiveArrayOutput) Index(i IntInput) AssetOrArchiveOutput {
-	return All(o, i).Apply(func(vs []interface{}) AssetOrArchive {
+	return All(o, i).ApplyT(func(vs []interface{}) AssetOrArchive {
 		return vs[0].([]AssetOrArchive)[vs[1].(int)]
 	}).(AssetOrArchiveOutput)
 }
@@ -1676,7 +1740,7 @@ func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx contex
 }
 
 func (o AssetOrArchiveMapOutput) MapIndex(k StringInput) AssetOrArchiveOutput {
-	return All(o, k).Apply(func(vs []interface{}) AssetOrArchive {
+	return All(o, k).ApplyT(func(vs []interface{}) AssetOrArchive {
 		return vs[0].(map[string]AssetOrArchive)[vs[1].(string)]
 	}).(AssetOrArchiveOutput)
 }
@@ -1766,7 +1830,7 @@ func (o BoolArrayOutput) ToBoolArrayOutputWithContext(ctx context.Context) BoolA
 }
 
 func (o BoolArrayOutput) Index(i IntInput) BoolOutput {
-	return All(o, i).Apply(func(vs []interface{}) bool {
+	return All(o, i).ApplyT(func(vs []interface{}) bool {
 		return vs[0].([]bool)[vs[1].(int)]
 	}).(BoolOutput)
 }
@@ -1814,7 +1878,7 @@ func (o BoolMapOutput) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOu
 }
 
 func (o BoolMapOutput) MapIndex(k StringInput) BoolOutput {
-	return All(o, k).Apply(func(vs []interface{}) bool {
+	return All(o, k).ApplyT(func(vs []interface{}) bool {
 		return vs[0].(map[string]bool)[vs[1].(string)]
 	}).(BoolOutput)
 }
@@ -1904,7 +1968,7 @@ func (o Float32ArrayOutput) ToFloat32ArrayOutputWithContext(ctx context.Context)
 }
 
 func (o Float32ArrayOutput) Index(i IntInput) Float32Output {
-	return All(o, i).Apply(func(vs []interface{}) float32 {
+	return All(o, i).ApplyT(func(vs []interface{}) float32 {
 		return vs[0].([]float32)[vs[1].(int)]
 	}).(Float32Output)
 }
@@ -1952,7 +2016,7 @@ func (o Float32MapOutput) ToFloat32MapOutputWithContext(ctx context.Context) Flo
 }
 
 func (o Float32MapOutput) MapIndex(k StringInput) Float32Output {
-	return All(o, k).Apply(func(vs []interface{}) float32 {
+	return All(o, k).ApplyT(func(vs []interface{}) float32 {
 		return vs[0].(map[string]float32)[vs[1].(string)]
 	}).(Float32Output)
 }
@@ -2042,7 +2106,7 @@ func (o Float64ArrayOutput) ToFloat64ArrayOutputWithContext(ctx context.Context)
 }
 
 func (o Float64ArrayOutput) Index(i IntInput) Float64Output {
-	return All(o, i).Apply(func(vs []interface{}) float64 {
+	return All(o, i).ApplyT(func(vs []interface{}) float64 {
 		return vs[0].([]float64)[vs[1].(int)]
 	}).(Float64Output)
 }
@@ -2090,7 +2154,7 @@ func (o Float64MapOutput) ToFloat64MapOutputWithContext(ctx context.Context) Flo
 }
 
 func (o Float64MapOutput) MapIndex(k StringInput) Float64Output {
-	return All(o, k).Apply(func(vs []interface{}) float64 {
+	return All(o, k).ApplyT(func(vs []interface{}) float64 {
 		return vs[0].(map[string]float64)[vs[1].(string)]
 	}).(Float64Output)
 }
@@ -2147,7 +2211,7 @@ func (o IDOutput) ToStringOutput() StringOutput {
 }
 
 func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return o.ApplyWithContext(ctx, func(_ context.Context, v ID) string {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
 }
@@ -2195,7 +2259,7 @@ func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOu
 }
 
 func (o IDArrayOutput) Index(i IntInput) IDOutput {
-	return All(o, i).Apply(func(vs []interface{}) ID {
+	return All(o, i).ApplyT(func(vs []interface{}) ID {
 		return vs[0].([]ID)[vs[1].(int)]
 	}).(IDOutput)
 }
@@ -2243,7 +2307,7 @@ func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 }
 
 func (o IDMapOutput) MapIndex(k StringInput) IDOutput {
-	return All(o, k).Apply(func(vs []interface{}) ID {
+	return All(o, k).ApplyT(func(vs []interface{}) ID {
 		return vs[0].(map[string]ID)[vs[1].(string)]
 	}).(IDOutput)
 }
@@ -2291,7 +2355,7 @@ func (o ArrayOutput) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 }
 
 func (o ArrayOutput) Index(i IntInput) Output {
-	return All(o, i).Apply(func(vs []interface{}) interface{} {
+	return All(o, i).ApplyT(func(vs []interface{}) interface{} {
 		return vs[0].([]interface{})[vs[1].(int)]
 	}).(Output)
 }
@@ -2339,7 +2403,7 @@ func (o MapOutput) ToMapOutputWithContext(ctx context.Context) MapOutput {
 }
 
 func (o MapOutput) MapIndex(k StringInput) Output {
-	return All(o, k).Apply(func(vs []interface{}) interface{} {
+	return All(o, k).ApplyT(func(vs []interface{}) interface{} {
 		return vs[0].(map[string]interface{})[vs[1].(string)]
 	}).(Output)
 }
@@ -2429,7 +2493,7 @@ func (o IntArrayOutput) ToIntArrayOutputWithContext(ctx context.Context) IntArra
 }
 
 func (o IntArrayOutput) Index(i IntInput) IntOutput {
-	return All(o, i).Apply(func(vs []interface{}) int {
+	return All(o, i).ApplyT(func(vs []interface{}) int {
 		return vs[0].([]int)[vs[1].(int)]
 	}).(IntOutput)
 }
@@ -2477,7 +2541,7 @@ func (o IntMapOutput) ToIntMapOutputWithContext(ctx context.Context) IntMapOutpu
 }
 
 func (o IntMapOutput) MapIndex(k StringInput) IntOutput {
-	return All(o, k).Apply(func(vs []interface{}) int {
+	return All(o, k).ApplyT(func(vs []interface{}) int {
 		return vs[0].(map[string]int)[vs[1].(string)]
 	}).(IntOutput)
 }
@@ -2567,7 +2631,7 @@ func (o Int16ArrayOutput) ToInt16ArrayOutputWithContext(ctx context.Context) Int
 }
 
 func (o Int16ArrayOutput) Index(i IntInput) Int16Output {
-	return All(o, i).Apply(func(vs []interface{}) int16 {
+	return All(o, i).ApplyT(func(vs []interface{}) int16 {
 		return vs[0].([]int16)[vs[1].(int)]
 	}).(Int16Output)
 }
@@ -2615,7 +2679,7 @@ func (o Int16MapOutput) ToInt16MapOutputWithContext(ctx context.Context) Int16Ma
 }
 
 func (o Int16MapOutput) MapIndex(k StringInput) Int16Output {
-	return All(o, k).Apply(func(vs []interface{}) int16 {
+	return All(o, k).ApplyT(func(vs []interface{}) int16 {
 		return vs[0].(map[string]int16)[vs[1].(string)]
 	}).(Int16Output)
 }
@@ -2705,7 +2769,7 @@ func (o Int32ArrayOutput) ToInt32ArrayOutputWithContext(ctx context.Context) Int
 }
 
 func (o Int32ArrayOutput) Index(i IntInput) Int32Output {
-	return All(o, i).Apply(func(vs []interface{}) int32 {
+	return All(o, i).ApplyT(func(vs []interface{}) int32 {
 		return vs[0].([]int32)[vs[1].(int)]
 	}).(Int32Output)
 }
@@ -2753,7 +2817,7 @@ func (o Int32MapOutput) ToInt32MapOutputWithContext(ctx context.Context) Int32Ma
 }
 
 func (o Int32MapOutput) MapIndex(k StringInput) Int32Output {
-	return All(o, k).Apply(func(vs []interface{}) int32 {
+	return All(o, k).ApplyT(func(vs []interface{}) int32 {
 		return vs[0].(map[string]int32)[vs[1].(string)]
 	}).(Int32Output)
 }
@@ -2843,7 +2907,7 @@ func (o Int64ArrayOutput) ToInt64ArrayOutputWithContext(ctx context.Context) Int
 }
 
 func (o Int64ArrayOutput) Index(i IntInput) Int64Output {
-	return All(o, i).Apply(func(vs []interface{}) int64 {
+	return All(o, i).ApplyT(func(vs []interface{}) int64 {
 		return vs[0].([]int64)[vs[1].(int)]
 	}).(Int64Output)
 }
@@ -2891,7 +2955,7 @@ func (o Int64MapOutput) ToInt64MapOutputWithContext(ctx context.Context) Int64Ma
 }
 
 func (o Int64MapOutput) MapIndex(k StringInput) Int64Output {
-	return All(o, k).Apply(func(vs []interface{}) int64 {
+	return All(o, k).ApplyT(func(vs []interface{}) int64 {
 		return vs[0].(map[string]int64)[vs[1].(string)]
 	}).(Int64Output)
 }
@@ -2981,7 +3045,7 @@ func (o Int8ArrayOutput) ToInt8ArrayOutputWithContext(ctx context.Context) Int8A
 }
 
 func (o Int8ArrayOutput) Index(i IntInput) Int8Output {
-	return All(o, i).Apply(func(vs []interface{}) int8 {
+	return All(o, i).ApplyT(func(vs []interface{}) int8 {
 		return vs[0].([]int8)[vs[1].(int)]
 	}).(Int8Output)
 }
@@ -3029,7 +3093,7 @@ func (o Int8MapOutput) ToInt8MapOutputWithContext(ctx context.Context) Int8MapOu
 }
 
 func (o Int8MapOutput) MapIndex(k StringInput) Int8Output {
-	return All(o, k).Apply(func(vs []interface{}) int8 {
+	return All(o, k).ApplyT(func(vs []interface{}) int8 {
 		return vs[0].(map[string]int8)[vs[1].(string)]
 	}).(Int8Output)
 }
@@ -3119,7 +3183,7 @@ func (o StringArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) S
 }
 
 func (o StringArrayOutput) Index(i IntInput) StringOutput {
-	return All(o, i).Apply(func(vs []interface{}) string {
+	return All(o, i).ApplyT(func(vs []interface{}) string {
 		return vs[0].([]string)[vs[1].(int)]
 	}).(StringOutput)
 }
@@ -3167,7 +3231,7 @@ func (o StringMapOutput) ToStringMapOutputWithContext(ctx context.Context) Strin
 }
 
 func (o StringMapOutput) MapIndex(k StringInput) StringOutput {
-	return All(o, k).Apply(func(vs []interface{}) string {
+	return All(o, k).ApplyT(func(vs []interface{}) string {
 		return vs[0].(map[string]string)[vs[1].(string)]
 	}).(StringOutput)
 }
@@ -3224,7 +3288,7 @@ func (o URNOutput) ToStringOutput() StringOutput {
 }
 
 func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
-	return o.ApplyWithContext(ctx, func(_ context.Context, v URN) string {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
 		return (string)(v)
 	}).(StringOutput)
 }
@@ -3272,7 +3336,7 @@ func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArra
 }
 
 func (o URNArrayOutput) Index(i IntInput) URNOutput {
-	return All(o, i).Apply(func(vs []interface{}) URN {
+	return All(o, i).ApplyT(func(vs []interface{}) URN {
 		return vs[0].([]URN)[vs[1].(int)]
 	}).(URNOutput)
 }
@@ -3320,7 +3384,7 @@ func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutpu
 }
 
 func (o URNMapOutput) MapIndex(k StringInput) URNOutput {
-	return All(o, k).Apply(func(vs []interface{}) URN {
+	return All(o, k).ApplyT(func(vs []interface{}) URN {
 		return vs[0].(map[string]URN)[vs[1].(string)]
 	}).(URNOutput)
 }
@@ -3410,7 +3474,7 @@ func (o UintArrayOutput) ToUintArrayOutputWithContext(ctx context.Context) UintA
 }
 
 func (o UintArrayOutput) Index(i IntInput) UintOutput {
-	return All(o, i).Apply(func(vs []interface{}) uint {
+	return All(o, i).ApplyT(func(vs []interface{}) uint {
 		return vs[0].([]uint)[vs[1].(int)]
 	}).(UintOutput)
 }
@@ -3458,7 +3522,7 @@ func (o UintMapOutput) ToUintMapOutputWithContext(ctx context.Context) UintMapOu
 }
 
 func (o UintMapOutput) MapIndex(k StringInput) UintOutput {
-	return All(o, k).Apply(func(vs []interface{}) uint {
+	return All(o, k).ApplyT(func(vs []interface{}) uint {
 		return vs[0].(map[string]uint)[vs[1].(string)]
 	}).(UintOutput)
 }
@@ -3548,7 +3612,7 @@ func (o Uint16ArrayOutput) ToUint16ArrayOutputWithContext(ctx context.Context) U
 }
 
 func (o Uint16ArrayOutput) Index(i IntInput) Uint16Output {
-	return All(o, i).Apply(func(vs []interface{}) uint16 {
+	return All(o, i).ApplyT(func(vs []interface{}) uint16 {
 		return vs[0].([]uint16)[vs[1].(int)]
 	}).(Uint16Output)
 }
@@ -3596,7 +3660,7 @@ func (o Uint16MapOutput) ToUint16MapOutputWithContext(ctx context.Context) Uint1
 }
 
 func (o Uint16MapOutput) MapIndex(k StringInput) Uint16Output {
-	return All(o, k).Apply(func(vs []interface{}) uint16 {
+	return All(o, k).ApplyT(func(vs []interface{}) uint16 {
 		return vs[0].(map[string]uint16)[vs[1].(string)]
 	}).(Uint16Output)
 }
@@ -3686,7 +3750,7 @@ func (o Uint32ArrayOutput) ToUint32ArrayOutputWithContext(ctx context.Context) U
 }
 
 func (o Uint32ArrayOutput) Index(i IntInput) Uint32Output {
-	return All(o, i).Apply(func(vs []interface{}) uint32 {
+	return All(o, i).ApplyT(func(vs []interface{}) uint32 {
 		return vs[0].([]uint32)[vs[1].(int)]
 	}).(Uint32Output)
 }
@@ -3734,7 +3798,7 @@ func (o Uint32MapOutput) ToUint32MapOutputWithContext(ctx context.Context) Uint3
 }
 
 func (o Uint32MapOutput) MapIndex(k StringInput) Uint32Output {
-	return All(o, k).Apply(func(vs []interface{}) uint32 {
+	return All(o, k).ApplyT(func(vs []interface{}) uint32 {
 		return vs[0].(map[string]uint32)[vs[1].(string)]
 	}).(Uint32Output)
 }
@@ -3824,7 +3888,7 @@ func (o Uint64ArrayOutput) ToUint64ArrayOutputWithContext(ctx context.Context) U
 }
 
 func (o Uint64ArrayOutput) Index(i IntInput) Uint64Output {
-	return All(o, i).Apply(func(vs []interface{}) uint64 {
+	return All(o, i).ApplyT(func(vs []interface{}) uint64 {
 		return vs[0].([]uint64)[vs[1].(int)]
 	}).(Uint64Output)
 }
@@ -3872,7 +3936,7 @@ func (o Uint64MapOutput) ToUint64MapOutputWithContext(ctx context.Context) Uint6
 }
 
 func (o Uint64MapOutput) MapIndex(k StringInput) Uint64Output {
-	return All(o, k).Apply(func(vs []interface{}) uint64 {
+	return All(o, k).ApplyT(func(vs []interface{}) uint64 {
 		return vs[0].(map[string]uint64)[vs[1].(string)]
 	}).(Uint64Output)
 }
@@ -3962,7 +4026,7 @@ func (o Uint8ArrayOutput) ToUint8ArrayOutputWithContext(ctx context.Context) Uin
 }
 
 func (o Uint8ArrayOutput) Index(i IntInput) Uint8Output {
-	return All(o, i).Apply(func(vs []interface{}) uint8 {
+	return All(o, i).ApplyT(func(vs []interface{}) uint8 {
 		return vs[0].([]uint8)[vs[1].(int)]
 	}).(Uint8Output)
 }
@@ -4010,7 +4074,7 @@ func (o Uint8MapOutput) ToUint8MapOutputWithContext(ctx context.Context) Uint8Ma
 }
 
 func (o Uint8MapOutput) MapIndex(k StringInput) Uint8Output {
-	return All(o, k).Apply(func(vs []interface{}) uint8 {
+	return All(o, k).ApplyT(func(vs []interface{}) uint8 {
 		return vs[0].(map[string]uint8)[vs[1].(string)]
 	}).(Uint8Output)
 }
