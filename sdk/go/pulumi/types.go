@@ -32,8 +32,8 @@ import (
 type Output interface {
 	ElementType() reflect.Type
 
-	Apply(applier func (interface{}) (interface{}, error)) AnyOutput
-	ApplyWithContext(ctx context.Context, applier func (context.Context, interface{}) (interface{}, error)) AnyOutput
+	Apply(applier func(interface{}) (interface{}, error)) AnyOutput
+	ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput
 	ApplyT(applier interface{}) Output
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
@@ -72,12 +72,12 @@ type OutputState struct {
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
-	value interface{}    // the value of this output if it is resolved.
-	err   error          // the error associated with this output if it is rejected.
-	known bool           // true if this output's value is known.
+	value interface{} // the value of this output if it is resolved.
+	err   error       // the error associated with this output if it is rejected.
+	known bool        // true if this output's value is known.
 
 	element reflect.Type // the element type of this output.
-	deps []Resource // the dependencies associated with this output property.
+	deps    []Resource   // the dependencies associated with this output property.
 }
 
 func (o *OutputState) elementType() reflect.Type {
@@ -379,18 +379,6 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	return result
 }
 
-{{range .Builtins}}
-// Apply{{.Name}} is like ApplyT, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}(applier interface{}) {{.Name}}Output {
-	return o.ApplyT(applier).({{.Name}}Output)
-}
-
-// Apply{{.Name}}WithContext is like ApplyTWithContext, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}WithContext(ctx context.Context, applier interface{}) {{.Name}}Output {
-	return o.ApplyTWithContext(ctx, applier).({{.Name}}Output)
-}
-{{end}}
-
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
 // array will contain the resolved value of the corresponding output. The output will be rejected if any of the inputs
 // is rejected.
@@ -458,7 +446,7 @@ func gatherDependencies(input Input) []Resource {
 
 func awaitStructFields(ctx context.Context, input reflect.Value, resolved reflect.Value) (bool, error) {
 	inputType, resolvedType := input.Type(), resolved.Type()
-	
+
 	contract.Assert(inputType.Kind() == reflect.Struct)
 	contract.Assert(resolvedType.Kind() == reflect.Struct)
 
@@ -733,102 +721,10 @@ func Any(v interface{}) AnyOutput {
 	return out.(AnyOutput)
 }
 
-type AnyOutput struct { *OutputState }
+type AnyOutput struct{ *OutputState }
 
 func (AnyOutput) ElementType() reflect.Type {
 	return anyType
-}
-
-{{with $builtins := .Builtins}}
-{{range $builtins}}
-var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()
-
-// {{.Name}}Input is an input type that accepts {{.Name}} and {{.Name}}Output values.
-type {{.Name}}Input interface {
-	Input
-
-	To{{.Name}}Output() {{.Name}}Output
-	To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output
-}
-{{if .DefineInputType}}
-// {{.Name}} is an input type for {{.Type}} values.
-type {{.Name}} {{.Type}}
-{{end}}
-{{if .DefineInputMethods}}
-// ElementType returns the element type of this Input ({{.ElementType}}).
-func ({{.InputType}}) ElementType() reflect.Type {
-	return {{.Name | Unexported}}Type
-}
-
-func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
-	return ToOutput(in).({{.Name}}Output)
-}
-
-func (in {{.InputType}}) To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output {
-	return ToOutputWithContext(ctx, in).({{.Name}}Output)
-}
-
-{{with $builtin := .}}
-{{range $t := .Implements}}
-func (in {{$builtin.InputType}}) To{{$t.Name}}Output() {{$t.Name}}Output {
-	return in.To{{$t.Name}}OutputWithContext(context.Background())
-}
-
-func (in {{$builtin.InputType}}) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
-	return in.To{{$builtin.Name}}OutputWithContext(ctx).To{{$t.Name}}OutputWithContext(ctx)
-}
-{{end}}
-{{end}}
-{{end}}
-// {{.Name}}Output is an Output that returns {{.ElementType}} values.
-type {{.Name}}Output struct  { *OutputState } 
-
-// ElementType returns the element type of this Output ({{.ElementType}}).
-func ({{.Name}}Output) ElementType() reflect.Type {
-	return {{.Name | Unexported}}Type
-}
-
-func (o {{.Name}}Output) To{{.Name}}Output() {{.Name}}Output {
-	return o
-}
-
-func (o {{.Name}}Output) To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output {
-	return o
-}
-{{with $builtin := .}}
-{{range $t := .Implements}}
-func (o {{$builtin.Name}}Output) To{{$t.Name}}Output() {{$t.Name}}Output {
-	return o.To{{$t.Name}}OutputWithContext(context.Background())
-}
-
-func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
-	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{$builtin.ElementType}}) {{$t.ElementType}} {
-		return ({{$t.ElementType}})(v)
-	}).({{$t.Name}}Output)
-}
-{{end}}
-{{end}}
-{{if .DefineIndex}}
-func (o {{.Name}}Output) Index(i IntInput) {{.IndexReturnType}}Output {
-	return All(o, i).ApplyT(func(vs []interface{}) {{.IndexElementType}} {
-			return vs[0].({{.ElementType}})[vs[1].(int)]
-	}).({{.IndexReturnType}}Output)
-}
-{{end}}
-{{if .DefineMapIndex}}
-func (o {{.Name}}Output) MapIndex(k StringInput) {{.MapIndexReturnType}}Output {
-	return All(o, k).ApplyT(func(vs []interface{}) {{.MapIndexElementType}} {
-		return vs[0].({{.ElementType}})[vs[1].(string)]
-	}).({{.MapIndexReturnType}}Output)
-}
-{{end}}
-{{end}}
-{{end}}
-
-func init() {
-{{- range .Builtins}}
-	RegisterOutputType({{.Name}}Output{})
-{{- end}}
 }
 
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, error) {
