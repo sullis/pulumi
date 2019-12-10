@@ -144,6 +144,10 @@ func (o *OutputState) await(ctx context.Context) (interface{}, bool, error) {
 			return nil, o.known, o.err
 		}
 
+		// If the result is an Output, await it in turn.
+		//
+		// NOTE: this isn't exactly type safe! The element type of the inner output really needs to be assignable to
+		// the element type of the outer output. We should reconsider this.
 		ov, ok := o.value.(Output)
 		if !ok {
 			return o.value, true, nil
@@ -166,11 +170,14 @@ func newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
 }
 
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
-var outputTypeToOutputState sync.Map // map[reflect.Type]func(Output, ...Resource)
+var outputTypeToOutputState sync.Map // map[reflect.Type]int
 
 func newOutput(typ reflect.Type, deps ...Resource) Output {
 	contract.Assert(typ.Implements(outputType))
 
+	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
+	// `isOutput` method. If we yet haven't recorded the index of this field for the ouptut type `typ`, find and
+	// record it.
 	outputFieldV, ok := outputTypeToOutputState.Load(typ)
 	if !ok {
 		outputField := -1
@@ -186,6 +193,7 @@ func newOutput(typ reflect.Type, deps ...Resource) Output {
 		outputFieldV = outputField
 	}
 
+	// Create the new output.
 	output := reflect.New(typ).Elem()
 	state := newOutputState(output.Interface().(Output).ElementType(), deps...)
 	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
@@ -276,8 +284,6 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 // Apply transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-//
-// nolint: interfacer
 func (o *OutputState) Apply(applier func(interface{}) (interface{}, error)) AnyOutput {
 	return o.ApplyWithContext(context.Background(), func(_ context.Context, v interface{}) (interface{}, error) {
 		return applier(v)
@@ -287,8 +293,6 @@ func (o *OutputState) Apply(applier func(interface{}) (interface{}, error)) AnyO
 // ApplyWithContext transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-//
-// nolint: interfacer
 func (o *OutputState) ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput {
 	return o.ApplyTWithContext(ctx, applier).(AnyOutput)
 }
@@ -317,7 +321,6 @@ func (o *OutputState) ApplyWithContext(ctx context.Context, applier func(context
 //        return []rune(v)
 //    }).(pulumi.AnyOutput)
 //
-// nolint: interfacer
 func (o *OutputState) ApplyT(applier interface{}) Output {
 	return o.ApplyTWithContext(context.Background(), makeContextful(applier, o.elementType()))
 }
@@ -349,7 +352,6 @@ var anyOutputType = reflect.TypeOf((*AnyOutput)(nil)).Elem()
 //        return []rune(v)
 //    }).(pulumi.AnyOutput)
 //
-// nolint: interfacer
 func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
 	fn := checkApplier(applier, o.elementType())
 
