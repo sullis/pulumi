@@ -169,8 +169,8 @@ func TestResolveOutputToOutput(t *testing.T) {
 
 // Test that ToOutput works with a struct type.
 func TestToOutputStruct(t *testing.T) {
-	out := ToOutput(nestedTypeArgs{Foo: String("bar"), Bar: Int(42)})
-	_, ok := out.(nestedTypeInput)
+	out := ToOutput(nestedTypeInputs{Foo: String("bar"), Bar: Int(42)})
+	_, ok := out.(nestedTypeOutput)
 	assert.True(t, ok)
 
 	v, known, err := await(out)
@@ -179,7 +179,7 @@ func TestToOutputStruct(t *testing.T) {
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 
 	out = ToOutput(out)
-	_, ok = out.(nestedTypeInput)
+	_, ok = out.(nestedTypeOutput)
 	assert.True(t, ok)
 
 	v, known, err = await(out)
@@ -187,12 +187,117 @@ func TestToOutputStruct(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
 
-	out = ToOutput(nestedTypeArgs{Foo: ToOutput(String("bar")).(StringInput), Bar: ToOutput(Int(42)).(IntInput)})
-	_, ok = out.(nestedTypeInput)
+	out = ToOutput(nestedTypeInputs{Foo: ToOutput(String("bar")).(StringInput), Bar: ToOutput(Int(42)).(IntInput)})
+	_, ok = out.(nestedTypeOutput)
 	assert.True(t, ok)
 
 	v, known, err = await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, nestedType{Foo: "bar", Bar: 42}, v)
+}
+
+type arrayLenInput Array
+
+func (arrayLenInput) ElementType() reflect.Type {
+	return Array{}.ElementType()
+}
+
+func (i arrayLenInput) ToIntOutput() IntOutput {
+	return i.ToIntOutputWithContext(context.Background())
+}
+
+func (i arrayLenInput) ToIntOutputWithContext(ctx context.Context) IntOutput {
+	return ToOutput(i).ApplyT(func(arr []interface{}) int {
+		return len(arr)
+	}).(IntOutput)
+}
+
+// Test that ToOutput converts inputs appropriately.
+func TestToOutputConvert(t *testing.T) {
+	out := ToOutput(nestedTypeInputs{Foo: ID("bar"), Bar: arrayLenInput{Int(42)}})
+	_, ok := out.(nestedTypeOutput)
+	assert.True(t, ok)
+
+	v, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Equal(t, nestedType{Foo: "bar", Bar: 1}, v)
+}
+
+// Test that ToOutput correctly handles nested inputs and outputs when the argument is an input or interface{}.
+func TestToOutputAny(t *testing.T) {
+	type args struct {
+		S StringInput
+		I IntInput
+		A Input
+	}
+
+	out := ToOutput(&args{
+		S: ID("hello"),
+		I: Int(42).ToIntOutput(),
+		A: Map{"world": Bool(true).ToBoolOutput()},
+	})
+	_, ok := out.(AnyOutput)
+	assert.True(t, ok)
+
+	v, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	argsV := v.(*args)
+
+	si, ok := argsV.S.(ID)
+	assert.True(t, ok)
+	assert.Equal(t, ID("hello"), si)
+
+	io, ok := argsV.I.(IntOutput)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(outputResolved), io.state)
+	assert.Equal(t, 42, io.value)
+
+	ai, ok := argsV.A.(Map)
+	assert.True(t, ok)
+
+	bo, ok := ai["world"].(BoolOutput)
+	assert.True(t, ok)
+	assert.Equal(t, uint32(outputResolved), bo.getState().state)
+	assert.Equal(t, true, bo.value)
+}
+
+type args struct {
+	S string
+	I int
+	A interface{}
+}
+
+type argsInputs struct {
+	S StringInput
+	I IntInput
+	A Input
+}
+
+func (*argsInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*args)(nil))
+}
+
+// Test that ToOutput correctly handles nested inputs when the argument is an input with no corresponding output type.
+func TestToOutputInputAny(t *testing.T) {
+	out := ToOutput(&argsInputs{
+		S: ID("hello"),
+		I: Int(42),
+		A: Map{"world": Bool(true).ToBoolOutput()},
+	})
+	_, ok := out.(AnyOutput)
+	assert.True(t, ok)
+
+	v, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.Equal(t, &args{
+		S: "hello",
+		I: 42,
+		A: map[string]interface{}{"world": true},
+	}, v)
 }

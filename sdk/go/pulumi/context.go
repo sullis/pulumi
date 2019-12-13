@@ -156,7 +156,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	if args == nil {
 		args = struct{}{}
 	}
-	resolvedArgs, _, err := marshalInput(args, false)
+	resolvedArgs, _, err := marshalInput(args, anyType, false)
 	if err != nil {
 		return errors.Wrap(err, "marshaling arguments")
 	}
@@ -240,13 +240,23 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 //     err := ctx.ReadResource(tok, name, id, nil, &resource, opts...)
 //
 func (ctx *Context) ReadResource(
-	t, name string, id IDInput, props map[string]Input, resource CustomResource, opts ...ResourceOption) error {
+	t, name string, id IDInput, props Input, resource CustomResource, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
 		return errors.New("resource name argument (for URN creation) cannot be empty")
 	} else if id == nil {
 		return errors.New("resource ID is required for lookup and cannot be empty")
+	}
+
+	if props != nil {
+		propsType := reflect.TypeOf(props)
+		if propsType.Kind() == reflect.Ptr {
+			propsType = propsType.Elem()
+		}
+		if propsType.Kind() != reflect.Struct {
+			return errors.New("props must be a struct or a pointer to a struct")
+		}
 	}
 
 	options := &resourceOptions{}
@@ -336,7 +346,7 @@ func (ctx *Context) ReadResource(
 //     err := ctx.RegisterResource(tok, name, props, &resource, opts...)
 //
 func (ctx *Context) RegisterResource(
-	t, name string, props map[string]Input, resource Resource, opts ...ResourceOption) error {
+	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
@@ -347,6 +357,16 @@ func (ctx *Context) RegisterResource(
 
 	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
 		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
+	}
+
+	if props != nil {
+		propsType := reflect.TypeOf(props)
+		if propsType.Kind() == reflect.Ptr {
+			propsType = propsType.Elem()
+		}
+		if propsType.Kind() != reflect.Struct {
+			return errors.New("props must be a struct or a pointer to a struct")
+		}
 	}
 
 	options := &resourceOptions{}
@@ -611,7 +631,7 @@ type resourceInputs struct {
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
-func (ctx *Context) prepareResourceInputs(props map[string]Input, t string,
+func (ctx *Context) prepareResourceInputs(props Input, t string,
 	providers map[string]ProviderResource, opts *resourceOptions) (*resourceInputs, error) {
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
@@ -809,7 +829,7 @@ func (ctx *Context) waitForRPCs() {
 }
 
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
-func (ctx *Context) RegisterResourceOutputs(resource Resource, outs map[string]Input) error {
+func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -828,14 +848,14 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs map[string]I
 			return
 		}
 
-		outsResolved, _, _, err := marshalInputs(outs)
+		outsResolved, _, err := marshalInput(outs, anyType, true)
 		if err != nil {
 			return
 		}
 
 		keepUnknowns := ctx.DryRun()
 		outsMarshalled, err := plugin.MarshalProperties(
-			outsResolved,
+			outsResolved.ObjectValue(),
 			plugin.MarshalOptions{KeepUnknowns: keepUnknowns})
 		if err != nil {
 			return

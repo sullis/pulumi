@@ -24,6 +24,46 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type test struct {
+	S             string                 `pulumi:"s"`
+	A             bool                   `pulumi:"a"`
+	B             int                    `pulumi:"b"`
+	StringAsset   Asset                  `pulumi:"cStringAsset"`
+	FileAsset     Asset                  `pulumi:"cFileAsset"`
+	RemoteAsset   Asset                  `pulumi:"cRemoteAsset"`
+	AssetArchive  Archive                `pulumi:"dAssetArchive"`
+	FileArchive   Archive                `pulumi:"dFileArchive"`
+	RemoteArchive Archive                `pulumi:"dRemoteArchive"`
+	E             interface{}            `pulumi:"e"`
+	Array         []interface{}          `pulumi:"fArray"`
+	Map           map[string]interface{} `pulumi:"fMap"`
+	G             string                 `pulumi:"g"`
+	H             string                 `pulumi:"h"`
+	I             string                 `pulumi:"i"`
+}
+
+type testInputs struct {
+	S             StringInput
+	A             BoolInput
+	B             IntInput
+	StringAsset   AssetInput
+	FileAsset     AssetInput
+	RemoteAsset   AssetInput
+	AssetArchive  ArchiveInput
+	FileArchive   ArchiveInput
+	RemoteArchive ArchiveInput
+	E             Input
+	Array         ArrayInput
+	Map           MapInput
+	G             StringInput
+	H             StringInput
+	I             StringInput
+}
+
+func (testInputs) ElementType() reflect.Type {
+	return reflect.TypeOf(test{})
+}
+
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
 	// Create interesting inputs.
@@ -31,37 +71,37 @@ func TestMarshalRoundtrip(t *testing.T) {
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
 	out2.fulfill(nil, false, nil)
-	input := map[string]Input{
-		"s":            String("a string"),
-		"a":            Bool(true),
-		"b":            Int(42),
-		"cStringAsset": NewStringAsset("put a lime in the coconut"),
-		"cFileAsset":   NewFileAsset("foo.txt"),
-		"cRemoteAsset": NewRemoteAsset("https://pulumi.com/fake/txt"),
-		"dAssetArchive": NewAssetArchive(map[string]interface{}{
+	inputs := testInputs{
+		S:           String("a string"),
+		A:           Bool(true),
+		B:           Int(42),
+		StringAsset: NewStringAsset("put a lime in the coconut"),
+		FileAsset:   NewFileAsset("foo.txt"),
+		RemoteAsset: NewRemoteAsset("https://pulumi.com/fake/txt"),
+		AssetArchive: NewAssetArchive(map[string]interface{}{
 			"subAsset":   NewFileAsset("bar.txt"),
 			"subArchive": NewFileArchive("bar.zip"),
 		}),
-		"dFileArchive":   NewFileArchive("foo.zip"),
-		"dRemoteArchive": NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		"e":              out,
-		"fArray":         Array{Int(0), Float32(1.3), String("x"), Bool(false)},
-		"fMap": Map{
+		FileArchive:   NewFileArchive("foo.zip"),
+		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		E:             out,
+		Array:         Array{Int(0), Float32(1.3), String("x"), Bool(false)},
+		Map: Map{
 			"x": String("y"),
 			"y": Float64(999.9),
 			"z": Bool(false),
 		},
-		"g": StringOutput{out2},
-		"h": URN("foo"),
-		"i": StringOutput{},
+		G: StringOutput{out2},
+		H: URN("foo"),
+		I: StringOutput{},
 	}
 
 	// Marshal those inputs.
-	resolved, pdeps, deps, err := marshalInputs(input)
+	resolved, pdeps, deps, err := marshalInputs(inputs)
 	assert.Nil(t, err)
 
 	if !assert.Nil(t, err) {
-		assert.Equal(t, len(input), len(pdeps))
+		assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(pdeps))
 		assert.Equal(t, 0, len(deps))
 
 		// Now just unmarshal and ensure the resulting map matches.
@@ -103,8 +143,6 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 type nestedTypeInput interface {
 	Input
-
-	isNestedType()
 }
 
 var nestedTypeType = reflect.TypeOf((*nestedType)(nil)).Elem()
@@ -114,16 +152,16 @@ type nestedType struct {
 	Bar int    `pulumi:"bar"`
 }
 
-type nestedTypeArgs struct {
+type nestedTypeInputs struct {
 	Foo StringInput `pulumi:"foo"`
 	Bar IntInput    `pulumi:"bar"`
 }
 
-func (nestedTypeArgs) ElementType() reflect.Type {
+func (nestedTypeInputs) ElementType() reflect.Type {
 	return nestedTypeType
 }
 
-func (nestedTypeArgs) isNestedType() {}
+func (nestedTypeInputs) isNestedType() {}
 
 type nestedTypeOutput struct{ *OutputState }
 
@@ -135,6 +173,64 @@ func (nestedTypeOutput) isNestedType() {}
 
 func init() {
 	RegisterOutputType(nestedTypeOutput{})
+}
+
+type testResourceArgs struct {
+	URN URN `pulumi:"urn"`
+	ID  ID  `pulumi:"id"`
+
+	Any     interface{}            `pulumi:"any"`
+	Archive Archive                `pulumi:"archive"`
+	Array   []interface{}          `pulumi:"array"`
+	Asset   Asset                  `pulumi:"asset"`
+	Bool    bool                   `pulumi:"bool"`
+	Float32 float32                `pulumi:"float32"`
+	Float64 float64                `pulumi:"float64"`
+	Int     int                    `pulumi:"int"`
+	Int8    int8                   `pulumi:"int8"`
+	Int16   int16                  `pulumi:"int16"`
+	Int32   int32                  `pulumi:"int32"`
+	Int64   int64                  `pulumi:"int64"`
+	Map     map[string]interface{} `pulumi:"map"`
+	String  string                 `pulumi:"string"`
+	Uint    uint                   `pulumi:"uint"`
+	Uint8   uint8                  `pulumi:"uint8"`
+	Uint16  uint16                 `pulumi:"uint16"`
+	Uint32  uint32                 `pulumi:"uint32"`
+	Uint64  uint64                 `pulumi:"uint64"`
+
+	Nested nestedType `pulumi:"nested"`
+}
+
+type testResourceInputs struct {
+	URN URNInput
+	ID  IDInput
+
+	Any     Input
+	Archive ArchiveInput
+	Array   ArrayInput
+	Asset   AssetInput
+	Bool    BoolInput
+	Float32 Float32Input
+	Float64 Float64Input
+	Int     IntInput
+	Int8    Int8Input
+	Int16   Int16Input
+	Int32   Int32Input
+	Int64   Int64Input
+	Map     MapInput
+	String  StringInput
+	Uint    UintInput
+	Uint8   Uint8Input
+	Uint16  Uint16Input
+	Uint32  Uint32Input
+	Uint64  Uint64Input
+
+	Nested nestedTypeInput
+}
+
+func (*testResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testResourceArgs)(nil))
 }
 
 type testResource struct {
@@ -167,28 +263,28 @@ func TestResourceState(t *testing.T) {
 	var theResource testResource
 	state := makeResourceState("", &theResource, nil)
 
-	resolved, _, _, _ := marshalInputs(map[string]Input{
-		"any":     String("foo"),
-		"archive": NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
-		"array":   Array{String("foo")},
-		"asset":   NewStringAsset("put a lime in the coconut"),
-		"bool":    Bool(true),
-		"float32": Float32(42.0),
-		"float64": Float64(3.14),
-		"int":     Int(-1),
-		"int8":    Int8(-2),
-		"int16":   Int16(-3),
-		"int32":   Int32(-4),
-		"int64":   Int64(-5),
-		"map":     Map{"foo": String("bar")},
-		"string":  String("qux"),
-		"uint":    Uint(1),
-		"uint8":   Uint8(2),
-		"uint16":  Uint16(3),
-		"uint32":  Uint32(4),
-		"uint64":  Uint64(5),
+	resolved, _, _, _ := marshalInputs(&testResourceInputs{
+		Any:     String("foo"),
+		Archive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
+		Array:   Array{String("foo")},
+		Asset:   NewStringAsset("put a lime in the coconut"),
+		Bool:    Bool(true),
+		Float32: Float32(42.0),
+		Float64: Float64(3.14),
+		Int:     Int(-1),
+		Int8:    Int8(-2),
+		Int16:   Int16(-3),
+		Int32:   Int32(-4),
+		Int64:   Int64(-5),
+		Map:     Map{"foo": String("bar")},
+		String:  String("qux"),
+		Uint:    Uint(1),
+		Uint8:   Uint8(2),
+		Uint16:  Uint16(3),
+		Uint32:  Uint32(4),
+		Uint64:  Uint64(5),
 
-		"nested": nestedTypeArgs{
+		Nested: nestedTypeInputs{
 			Foo: String("bar"),
 			Bar: Int(42),
 		},
@@ -199,29 +295,29 @@ func TestResourceState(t *testing.T) {
 	assert.NoError(t, err)
 	state.resolve(false, nil, nil, "foo", "bar", s)
 
-	input := map[string]Input{
-		"urn":     theResource.URN(),
-		"id":      theResource.ID(),
-		"any":     theResource.Any,
-		"archive": theResource.Archive,
-		"array":   theResource.Array,
-		"asset":   theResource.Asset,
-		"bool":    theResource.Bool,
-		"float32": theResource.Float32,
-		"float64": theResource.Float64,
-		"int":     theResource.Int,
-		"int8":    theResource.Int8,
-		"int16":   theResource.Int16,
-		"int32":   theResource.Int32,
-		"int64":   theResource.Int64,
-		"map":     theResource.Map,
-		"string":  theResource.String,
-		"uint":    theResource.Uint,
-		"uint8":   theResource.Uint8,
-		"uint16":  theResource.Uint16,
-		"uint32":  theResource.Uint32,
-		"uint64":  theResource.Uint64,
-		"nested":  theResource.Nested,
+	input := &testResourceInputs{
+		URN:     theResource.URN(),
+		ID:      theResource.ID(),
+		Any:     theResource.Any,
+		Archive: theResource.Archive,
+		Array:   theResource.Array,
+		Asset:   theResource.Asset,
+		Bool:    theResource.Bool,
+		Float32: theResource.Float32,
+		Float64: theResource.Float64,
+		Int:     theResource.Int,
+		Int8:    theResource.Int8,
+		Int16:   theResource.Int16,
+		Int32:   theResource.Int32,
+		Int64:   theResource.Int64,
+		Map:     theResource.Map,
+		String:  theResource.String,
+		Uint:    theResource.Uint,
+		Uint8:   theResource.Uint8,
+		Uint16:  theResource.Uint16,
+		Uint32:  theResource.Uint32,
+		Uint64:  theResource.Uint64,
+		Nested:  theResource.Nested,
 	}
 	resolved, pdeps, deps, err := marshalInputs(input)
 	assert.Nil(t, err)

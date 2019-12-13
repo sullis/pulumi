@@ -24,19 +24,82 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
+	contract.Assert(from.Kind() == reflect.Struct)
+	contract.Assert(to.Kind() == reflect.Struct)
+
+	if from == to {
+		return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
+			if !v.IsValid() {
+				return to.Field(i), reflect.Value{}
+			}
+			return to.Field(i), v.Field(i)
+		}
+	}
+
+	nameToIndex := map[string]int{}
+	numFields := to.NumField()
+	for i := 0; i < numFields; i++ {
+		nameToIndex[to.Field(i).Name] = i
+	}
+
+	return func(v reflect.Value, i int) (reflect.StructField, reflect.Value) {
+		fieldName := from.Field(i).Name
+		j, ok := nameToIndex[fieldName]
+		if !ok {
+			panic(errors.Errorf("unknown field %v when marshaling inputs of type %v to %v", fieldName, from, to))
+		}
+
+		field := to.Field(j)
+		if !v.IsValid() {
+			return field, reflect.Value{}
+		}
+		return field, v.Field(j)
+	}
+}
+
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
-func marshalInputs(props map[string]Input) (resource.PropertyMap, map[string][]URN, []URN, error) {
+func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, error) {
 	var depURNs []URN
 	depset := map[URN]bool{}
 	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
-	for key := range props {
-		// Get the underlying value, possibly waiting for an output to arrive.
-		v, resourceDeps, err := marshalInput(props[key], true)
-		if err != nil {
-			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", key)
+
+	if props == nil {
+		return pmap, pdeps, depURNs, nil
+	}
+
+	pv := reflect.ValueOf(props)
+	if pv.Kind() == reflect.Ptr {
+		pv = pv.Elem()
+	}
+	pt := pv.Type()
+	contract.Assert(pt.Kind() == reflect.Struct)
+
+	// We use the resolved type to decide how to convert inputs to outputs.
+	rt := props.ElementType()
+	if rt.Kind() == reflect.Ptr {
+		rt = rt.Elem()
+	}
+	contract.Assert(rt.Kind() == reflect.Struct)
+
+	getMappedField := mapStructTypes(pt, rt)
+
+	// Now, marshal each field in the input.
+	numFields := pt.NumField()
+	for i := 0; i < numFields; i++ {
+		destField, _ := getMappedField(reflect.Value{}, i)
+		tag := destField.Tag.Get("pulumi")
+		if tag == "" {
+			continue
 		}
 
-		pmap[resource.PropertyKey(key)] = v
+		// Get the underlying value, possibly waiting for an output to arrive.
+		v, resourceDeps, err := marshalInput(pv.Field(i).Interface(), destField.Type, true)
+		if err != nil {
+			return nil, nil, nil, errors.Wrapf(err, "awaiting input property %s", tag)
+		}
+
+		pmap[resource.PropertyKey(tag)] = v
 
 		// Record all dependencies accumulated from reading this property.
 		var deps []URN
@@ -56,7 +119,7 @@ func marshalInputs(props map[string]Input) (resource.PropertyMap, map[string][]U
 			}
 		}
 		if len(deps) > 0 {
-			pdeps[key] = deps
+			pdeps[tag] = deps
 		}
 	}
 
@@ -70,36 +133,67 @@ const rpcTokenUnknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 const cannotAwaitFmt = "cannot marshal Output value of type %T; please use Apply to access the Output's value"
 
 // marshalInput marshals an input value, returning its raw serializable value along with any dependencies.
-func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource, error) {
-	// TODO(pdg): when marshaling Input types, use the dest type to call the appropriate ToOutput method.
+func marshalInput(v interface{}, destType reflect.Type, await bool) (resource.PropertyValue, []Resource, error) {
 	for {
 		// If v is nil, just return that.
 		if v == nil {
 			return resource.PropertyValue{}, nil, nil
 		}
 
-		// If this is an Output, recurse.
-		if out, ok := v.(Output); ok {
-			if !await {
-				return resource.PropertyValue{}, nil, errors.Errorf(cannotAwaitFmt, v)
+		valueType := reflect.TypeOf(v)
+
+		// If this is an Input, make sure it is of the proper type and await it if it is an output/
+		var deps []Resource
+		if input, ok := v.(Input); ok {
+			valueType = input.ElementType()
+
+			// If the element type of the input is not identical to the type of the destination and the destination is
+			// not the any type (i.e. interface{}), attempt to convert the input to an appropriately-typed output.
+			if valueType != destType && destType != anyType {
+				if newOutput, ok := callToOutputMethod(context.TODO(), reflect.ValueOf(input), destType); ok {
+					// We were able to convert the input. Use the result as the new input value.
+					input, valueType = newOutput, destType
+				} else if !valueType.AssignableTo(destType) {
+					err := errors.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
+					return resource.PropertyValue{}, nil, err
+				}
 			}
-			return marshalInputOutput(out)
+
+			// If the input is an Output, await its value. The returned value is fully resolved.
+			if output, ok := input.(Output); ok {
+				if !await {
+					return resource.PropertyValue{}, nil, errors.Errorf(cannotAwaitFmt, output)
+				}
+
+				// Await the output.
+				ov, known, err := output.await(context.TODO())
+				if err != nil {
+					return resource.PropertyValue{}, nil, err
+				}
+
+				// If the value is unknown, return the appropriate sentinel.
+				if !known {
+					return resource.MakeComputed(resource.NewStringProperty("")), output.dependencies(), nil
+				}
+
+				v, deps = ov, output.dependencies()
+			}
 		}
 
-		// Next, look for some well known types.
+		// Look for some well known types.
 		switch v := v.(type) {
 		case *asset:
 			return resource.NewAssetProperty(&resource.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
-			}), nil, nil
+			}), deps, nil
 		case *archive:
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
 				assets = make(map[string]interface{})
 				for k, a := range as {
-					aa, _, err := marshalInput(a, await)
+					aa, _, err := marshalInput(a, anyType, await)
 					if err != nil {
 						return resource.PropertyValue{}, nil, err
 					}
@@ -110,45 +204,55 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 				Assets: assets,
 				Path:   v.Path(),
 				URI:    v.URI(),
-			}), nil, nil
+			}), deps, nil
 		case CustomResource:
+			deps = append(deps, v)
+
 			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
-			e, d, err := marshalInput(v.ID(), await)
+			e, d, err := marshalInput(v.ID(), idType, await)
 			if err != nil {
 				return resource.PropertyValue{}, nil, err
 			}
-			return e, append([]Resource{v}, d...), nil
+			return e, append(deps, d...), nil
+		}
+
+		contract.Assertf(valueType.AssignableTo(destType), "%v: cannot assign %v to %v", v, valueType, destType)
+
+		if destType.Kind() == reflect.Interface {
+			destType = valueType
 		}
 
 		rv := reflect.ValueOf(v)
 		switch rv.Type().Kind() {
 		case reflect.Bool:
-			return resource.NewBoolProperty(rv.Bool()), nil, nil
+			return resource.NewBoolProperty(rv.Bool()), deps, nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return resource.NewNumberProperty(float64(rv.Int())), nil, nil
+			return resource.NewNumberProperty(float64(rv.Int())), deps, nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			return resource.NewNumberProperty(float64(rv.Uint())), nil, nil
+			return resource.NewNumberProperty(float64(rv.Uint())), deps, nil
 		case reflect.Float32, reflect.Float64:
-			return resource.NewNumberProperty(rv.Float()), nil, nil
+			return resource.NewNumberProperty(rv.Float()), deps, nil
 		case reflect.Ptr, reflect.Interface:
 			// Dereference non-nil pointers and interfaces.
 			if rv.IsNil() {
-				return resource.PropertyValue{}, nil, nil
+				return resource.PropertyValue{}, deps, nil
 			}
-			rv = rv.Elem()
+			v, destType = rv.Elem().Interface(), destType.Elem()
+			continue
 		case reflect.String:
-			return resource.NewStringProperty(rv.String()), nil, nil
+			return resource.NewStringProperty(rv.String()), deps, nil
 		case reflect.Array, reflect.Slice:
 			if rv.IsNil() {
-				return resource.PropertyValue{}, nil, nil
+				return resource.PropertyValue{}, deps, nil
 			}
+
+			destElem := destType.Elem()
 
 			// If an array or a slice, create a new array by recursing into elements.
 			var arr []resource.PropertyValue
-			var deps []Resource
 			for i := 0; i < rv.Len(); i++ {
 				elem := rv.Index(i)
-				e, d, err := marshalInput(elem.Interface(), await)
+				e, d, err := marshalInput(elem.Interface(), destElem, await)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -165,15 +269,16 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 			}
 
 			if rv.IsNil() {
-				return resource.PropertyValue{}, nil, nil
+				return resource.PropertyValue{}, deps, nil
 			}
+
+			destElem := destType.Elem()
 
 			// For maps, only support string-based keys, and recurse into the values.
 			obj := resource.PropertyMap{}
-			var deps []Resource
 			for _, key := range rv.MapKeys() {
 				value := rv.MapIndex(key)
-				mv, d, err := marshalInput(value.Interface(), await)
+				mv, d, err := marshalInput(value.Interface(), destElem, await)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -186,14 +291,15 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 		case reflect.Struct:
 			obj := resource.PropertyMap{}
 			typ := rv.Type()
-			var deps []Resource
+			getMappedField := mapStructTypes(typ, destType)
 			for i := 0; i < typ.NumField(); i++ {
-				tag := typ.Field(i).Tag.Get("pulumi")
+				destField, _ := getMappedField(reflect.Value{}, i)
+				tag := destField.Tag.Get("pulumi")
 				if tag == "" {
 					continue
 				}
 
-				fv, d, err := marshalInput(rv.Field(i).Interface(), await)
+				fv, d, err := marshalInput(rv.Field(i).Interface(), destField.Type, await)
 				if err != nil {
 					return resource.PropertyValue{}, nil, err
 				}
@@ -204,31 +310,9 @@ func marshalInput(v interface{}, await bool) (resource.PropertyValue, []Resource
 				deps = append(deps, d...)
 			}
 			return resource.NewObjectProperty(obj), deps, nil
-		default:
-			return resource.PropertyValue{}, nil, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 		}
-		v = rv.Interface()
+		return resource.PropertyValue{}, nil, errors.Errorf("unrecognized input property type: %v (%T)", v, v)
 	}
-}
-
-func marshalInputOutput(out Output) (resource.PropertyValue, []Resource, error) {
-	// Await the value and return its raw value.
-	ov, known, err := out.await(context.TODO())
-	if err != nil {
-		return resource.PropertyValue{}, nil, err
-	}
-
-	// If the value is known, marshal it.
-	if known {
-		e, d, merr := marshalInput(ov, true)
-		if merr != nil {
-			return resource.PropertyValue{}, nil, merr
-		}
-		return e, append(out.dependencies(), d...), nil
-	}
-
-	// Otherwise, simply return the unknown value sentinel.
-	return resource.MakeComputed(resource.NewStringProperty("")), out.dependencies(), nil
 }
 
 func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, error) {

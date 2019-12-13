@@ -41,8 +41,28 @@ func (b builtin) DefineInputType() bool {
 	return b.inputType == "" && b.Type != "AssetOrArchive"
 }
 
+func (b builtin) DefinePtrType() bool {
+	return strings.HasSuffix(b.Name, "Ptr")
+}
+
+func (b builtin) PtrType() string {
+	return b.inputType[1:]
+}
+
 func (b builtin) DefineInputMethods() bool {
 	return b.Type != "AssetOrArchive"
+}
+
+func (b builtin) DefineElem() bool {
+	return b.DefinePtrType()
+}
+
+func (b builtin) ElemReturnType() string {
+	return strings.TrimSuffix(b.Name, "Ptr")
+}
+
+func (b builtin) ElemElementType() string {
+	return strings.TrimPrefix(b.Type, "*")
 }
 
 func (b builtin) DefineIndex() bool {
@@ -106,23 +126,25 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Uint8", Type: "uint8", Example: "Uint8(6)"},
 })
 
+func unexported(s string) string {
+	runes := []rune(s)
+
+	allCaps := true
+	for _, r := range runes {
+		if !unicode.IsUpper(r) {
+			allCaps = false
+			break
+		}
+	}
+
+	if allCaps {
+		return strings.ToLower(s)
+	}
+	return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
+}
+
 var funcs = template.FuncMap{
-	"Unexported": func(s string) string {
-		runes := []rune(s)
-
-		allCaps := true
-		for _, r := range runes {
-			if !unicode.IsUpper(r) {
-				allCaps = false
-				break
-			}
-		}
-
-		if allCaps {
-			return strings.ToLower(s)
-		}
-		return string(append([]rune{unicode.ToLower(runes[0])}, runes[1:]...))
-	},
+	"Unexported": unexported,
 }
 
 func makeBuiltins(primitives []*builtin) []*builtin {
@@ -133,6 +155,12 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 		if p.Name != "Input" {
 			builtins = append(builtins, p)
 			name = p.Name
+		}
+		switch name {
+		case "Archive", "Asset", "AssetOrArchive", "":
+			// do nothing
+		default:
+			builtins = append(builtins, &builtin{Name: name + "Ptr", Type: "*" + p.Type, inputType: "*" + unexported(p.Type) + "Ptr", Example: fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example)})
 		}
 		builtins = append(builtins, &builtin{Name: name + "Array", Type: "[]" + name + "Input", elementType: "[]" + p.Type, Example: fmt.Sprintf("%sArray{%s}", name, p.Example)})
 		builtins = append(builtins, &builtin{Name: name + "Map", Type: "map[string]" + name + "Input", elementType: "map[string]" + p.Type, Example: fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example)})

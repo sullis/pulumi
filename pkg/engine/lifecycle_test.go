@@ -5144,6 +5144,24 @@ type testResource struct {
 	Foo pulumi.StringOutput `pulumi:"foo"`
 }
 
+type testResourceArgs struct {
+	Foo  string `pulumi:"foo"`
+	Bar  string `pulumi:"bar"`
+	Baz  string `pulumi:"baz"`
+	Bang string `pulumi:"bang"`
+}
+
+type testResourceInputs struct {
+	Foo  pulumi.StringInput
+	Bar  pulumi.StringInput
+	Baz  pulumi.StringInput
+	Bang pulumi.StringInput
+}
+
+func (*testResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testResourceArgs)(nil))
+}
+
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -5173,16 +5191,16 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			var resA testResource
-			err := ctx.RegisterResource("pkgA:m:typA", "resA", map[string]pulumi.Input{
-				"foo": pulumi.String("bar"),
+			err := ctx.RegisterResource("pkgA:m:typA", "resA", &testResourceInputs{
+				Foo: pulumi.String("bar"),
 			}, &resA)
 			assert.NoError(t, err)
 
 			var resB testResource
-			err = ctx.RegisterResource("pkgA:m:typA", "resB", map[string]pulumi.Input{
-				"baz": resA.Foo.ApplyT(func(v string) string {
+			err = ctx.RegisterResource("pkgA:m:typA", "resB", &testResourceInputs{
+				Baz: resA.Foo.ApplyT(func(v string) string {
 					return v + "bar"
-				}),
+				}).(pulumi.StringOutput),
 			}, &resB)
 			assert.NoError(t, err)
 
@@ -5284,9 +5302,9 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
 					ignoreChanges []string) (plugin.DiffResult, error) {
-					if !olds["A"].DeepEquals(news["A"]) {
+					if !olds["foo"].DeepEquals(news["foo"]) {
 						return plugin.DiffResult{
-							ReplaceKeys:         []resource.PropertyKey{"A"},
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
@@ -5295,8 +5313,8 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 				DiffF: func(urn resource.URN, id resource.ID,
 					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
 
-					if !olds["A"].DeepEquals(news["A"]) {
-						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					if !olds["foo"].DeepEquals(news["foo"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"foo"}}, nil
 					}
 					return plugin.DiffResult{}, nil
 				},
@@ -5304,7 +5322,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		}),
 	}
 
-	inputsA := map[string]pulumi.Input{"A": pulumi.String("foo")}
+	inputsA := &testResourceInputs{Foo: pulumi.String("foo")}
 
 	dbrValue, dbrA := true, (*bool)(nil)
 	getDbr := func() bool {
@@ -5346,7 +5364,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	// Change the value of resA.A. Should create before replace
-	inputsA["A"] = pulumi.String("bar")
+	inputsA.Foo = pulumi.String("bar")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -5370,7 +5388,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 
 	// Change the registration of resA such that it requires delete-before-replace and change the value of resA.A.
 	// replacement should be delete-before-replace.
-	dbrA, inputsA["A"] = &dbrValue, pulumi.String("baz")
+	dbrA, inputsA.Foo = &dbrValue, pulumi.String("baz")
 	p.Steps = []TestStep{{
 		Op: Update,
 
@@ -5520,22 +5538,22 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			// register a couple of providers, pass in some props that we can use to indentify it during invoke
 			var providerA pulumi.ProviderResourceState
 			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "prov1",
-				map[string]pulumi.Input{
-					"foo": pulumi.String("1"),
+				&testResourceInputs{
+					Foo: pulumi.String("1"),
 				}, &providerA)
 			assert.NoError(t, err)
 			var providerB pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov2",
-				map[string]pulumi.Input{
-					"bar":  pulumi.String("2"),
-					"bang": pulumi.String(""),
+				&testResourceInputs{
+					Bar:  pulumi.String("2"),
+					Bang: pulumi.String(""),
 				}, &providerB)
 			assert.NoError(t, err)
 			var providerBOverride pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov3",
-				map[string]pulumi.Input{
-					"bar":  pulumi.String(""),
-					"bang": pulumi.String("3"),
+				&testResourceInputs{
+					Bar:  pulumi.String(""),
+					Bang: pulumi.String("3"),
 				}, &providerBOverride)
 			assert.NoError(t, err)
 			parentProviders := make(map[string]pulumi.ProviderResource)

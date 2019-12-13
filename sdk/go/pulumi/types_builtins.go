@@ -120,6 +120,16 @@ func (o *OutputState) ApplyBoolWithContext(ctx context.Context, applier interfac
 	return o.ApplyTWithContext(ctx, applier).(BoolOutput)
 }
 
+// ApplyBoolPtr is like ApplyT, but returns a BoolPtrOutput.
+func (o *OutputState) ApplyBoolPtr(applier interface{}) BoolPtrOutput {
+	return o.ApplyT(applier).(BoolPtrOutput)
+}
+
+// ApplyBoolPtrWithContext is like ApplyTWithContext, but returns a BoolPtrOutput.
+func (o *OutputState) ApplyBoolPtrWithContext(ctx context.Context, applier interface{}) BoolPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(BoolPtrOutput)
+}
+
 // ApplyBoolArray is like ApplyT, but returns a BoolArrayOutput.
 func (o *OutputState) ApplyBoolArray(applier interface{}) BoolArrayOutput {
 	return o.ApplyT(applier).(BoolArrayOutput)
@@ -148,6 +158,16 @@ func (o *OutputState) ApplyFloat32(applier interface{}) Float32Output {
 // ApplyFloat32WithContext is like ApplyTWithContext, but returns a Float32Output.
 func (o *OutputState) ApplyFloat32WithContext(ctx context.Context, applier interface{}) Float32Output {
 	return o.ApplyTWithContext(ctx, applier).(Float32Output)
+}
+
+// ApplyFloat32Ptr is like ApplyT, but returns a Float32PtrOutput.
+func (o *OutputState) ApplyFloat32Ptr(applier interface{}) Float32PtrOutput {
+	return o.ApplyT(applier).(Float32PtrOutput)
+}
+
+// ApplyFloat32PtrWithContext is like ApplyTWithContext, but returns a Float32PtrOutput.
+func (o *OutputState) ApplyFloat32PtrWithContext(ctx context.Context, applier interface{}) Float32PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float32PtrOutput)
 }
 
 // ApplyFloat32Array is like ApplyT, but returns a Float32ArrayOutput.
@@ -180,6 +200,16 @@ func (o *OutputState) ApplyFloat64WithContext(ctx context.Context, applier inter
 	return o.ApplyTWithContext(ctx, applier).(Float64Output)
 }
 
+// ApplyFloat64Ptr is like ApplyT, but returns a Float64PtrOutput.
+func (o *OutputState) ApplyFloat64Ptr(applier interface{}) Float64PtrOutput {
+	return o.ApplyT(applier).(Float64PtrOutput)
+}
+
+// ApplyFloat64PtrWithContext is like ApplyTWithContext, but returns a Float64PtrOutput.
+func (o *OutputState) ApplyFloat64PtrWithContext(ctx context.Context, applier interface{}) Float64PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Float64PtrOutput)
+}
+
 // ApplyFloat64Array is like ApplyT, but returns a Float64ArrayOutput.
 func (o *OutputState) ApplyFloat64Array(applier interface{}) Float64ArrayOutput {
 	return o.ApplyT(applier).(Float64ArrayOutput)
@@ -208,6 +238,16 @@ func (o *OutputState) ApplyID(applier interface{}) IDOutput {
 // ApplyIDWithContext is like ApplyTWithContext, but returns a IDOutput.
 func (o *OutputState) ApplyIDWithContext(ctx context.Context, applier interface{}) IDOutput {
 	return o.ApplyTWithContext(ctx, applier).(IDOutput)
+}
+
+// ApplyIDPtr is like ApplyT, but returns a IDPtrOutput.
+func (o *OutputState) ApplyIDPtr(applier interface{}) IDPtrOutput {
+	return o.ApplyT(applier).(IDPtrOutput)
+}
+
+// ApplyIDPtrWithContext is like ApplyTWithContext, but returns a IDPtrOutput.
+func (o *OutputState) ApplyIDPtrWithContext(ctx context.Context, applier interface{}) IDPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(IDPtrOutput)
 }
 
 // ApplyIDArray is like ApplyT, but returns a IDArrayOutput.
@@ -260,6 +300,16 @@ func (o *OutputState) ApplyIntWithContext(ctx context.Context, applier interface
 	return o.ApplyTWithContext(ctx, applier).(IntOutput)
 }
 
+// ApplyIntPtr is like ApplyT, but returns a IntPtrOutput.
+func (o *OutputState) ApplyIntPtr(applier interface{}) IntPtrOutput {
+	return o.ApplyT(applier).(IntPtrOutput)
+}
+
+// ApplyIntPtrWithContext is like ApplyTWithContext, but returns a IntPtrOutput.
+func (o *OutputState) ApplyIntPtrWithContext(ctx context.Context, applier interface{}) IntPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(IntPtrOutput)
+}
+
 // ApplyIntArray is like ApplyT, but returns a IntArrayOutput.
 func (o *OutputState) ApplyIntArray(applier interface{}) IntArrayOutput {
 	return o.ApplyT(applier).(IntArrayOutput)
@@ -288,6 +338,16 @@ func (o *OutputState) ApplyInt16(applier interface{}) Int16Output {
 // ApplyInt16WithContext is like ApplyTWithContext, but returns a Int16Output.
 func (o *OutputState) ApplyInt16WithContext(ctx context.Context, applier interface{}) Int16Output {
 	return o.ApplyTWithContext(ctx, applier).(Int16Output)
+}
+
+// ApplyInt16Ptr is like ApplyT, but returns a Int16PtrOutput.
+func (o *OutputState) ApplyInt16Ptr(applier interface{}) Int16PtrOutput {
+	return o.ApplyT(applier).(Int16PtrOutput)
+}
+
+// ApplyInt16PtrWithContext is like ApplyTWithContext, but returns a Int16PtrOutput.
+func (o *OutputState) ApplyInt16PtrWithContext(ctx context.Context, applier interface{}) Int16PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int16PtrOutput)
 }
 
 // ApplyInt16Array is like ApplyT, but returns a Int16ArrayOutput.
@@ -320,6 +380,16 @@ func (o *OutputState) ApplyInt32WithContext(ctx context.Context, applier interfa
 	return o.ApplyTWithContext(ctx, applier).(Int32Output)
 }
 
+// ApplyInt32Ptr is like ApplyT, but returns a Int32PtrOutput.
+func (o *OutputState) ApplyInt32Ptr(applier interface{}) Int32PtrOutput {
+	return o.ApplyT(applier).(Int32PtrOutput)
+}
+
+// ApplyInt32PtrWithContext is like ApplyTWithContext, but returns a Int32PtrOutput.
+func (o *OutputState) ApplyInt32PtrWithContext(ctx context.Context, applier interface{}) Int32PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int32PtrOutput)
+}
+
 // ApplyInt32Array is like ApplyT, but returns a Int32ArrayOutput.
 func (o *OutputState) ApplyInt32Array(applier interface{}) Int32ArrayOutput {
 	return o.ApplyT(applier).(Int32ArrayOutput)
@@ -348,6 +418,16 @@ func (o *OutputState) ApplyInt64(applier interface{}) Int64Output {
 // ApplyInt64WithContext is like ApplyTWithContext, but returns a Int64Output.
 func (o *OutputState) ApplyInt64WithContext(ctx context.Context, applier interface{}) Int64Output {
 	return o.ApplyTWithContext(ctx, applier).(Int64Output)
+}
+
+// ApplyInt64Ptr is like ApplyT, but returns a Int64PtrOutput.
+func (o *OutputState) ApplyInt64Ptr(applier interface{}) Int64PtrOutput {
+	return o.ApplyT(applier).(Int64PtrOutput)
+}
+
+// ApplyInt64PtrWithContext is like ApplyTWithContext, but returns a Int64PtrOutput.
+func (o *OutputState) ApplyInt64PtrWithContext(ctx context.Context, applier interface{}) Int64PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int64PtrOutput)
 }
 
 // ApplyInt64Array is like ApplyT, but returns a Int64ArrayOutput.
@@ -380,6 +460,16 @@ func (o *OutputState) ApplyInt8WithContext(ctx context.Context, applier interfac
 	return o.ApplyTWithContext(ctx, applier).(Int8Output)
 }
 
+// ApplyInt8Ptr is like ApplyT, but returns a Int8PtrOutput.
+func (o *OutputState) ApplyInt8Ptr(applier interface{}) Int8PtrOutput {
+	return o.ApplyT(applier).(Int8PtrOutput)
+}
+
+// ApplyInt8PtrWithContext is like ApplyTWithContext, but returns a Int8PtrOutput.
+func (o *OutputState) ApplyInt8PtrWithContext(ctx context.Context, applier interface{}) Int8PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Int8PtrOutput)
+}
+
 // ApplyInt8Array is like ApplyT, but returns a Int8ArrayOutput.
 func (o *OutputState) ApplyInt8Array(applier interface{}) Int8ArrayOutput {
 	return o.ApplyT(applier).(Int8ArrayOutput)
@@ -408,6 +498,16 @@ func (o *OutputState) ApplyString(applier interface{}) StringOutput {
 // ApplyStringWithContext is like ApplyTWithContext, but returns a StringOutput.
 func (o *OutputState) ApplyStringWithContext(ctx context.Context, applier interface{}) StringOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringOutput)
+}
+
+// ApplyStringPtr is like ApplyT, but returns a StringPtrOutput.
+func (o *OutputState) ApplyStringPtr(applier interface{}) StringPtrOutput {
+	return o.ApplyT(applier).(StringPtrOutput)
+}
+
+// ApplyStringPtrWithContext is like ApplyTWithContext, but returns a StringPtrOutput.
+func (o *OutputState) ApplyStringPtrWithContext(ctx context.Context, applier interface{}) StringPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(StringPtrOutput)
 }
 
 // ApplyStringArray is like ApplyT, but returns a StringArrayOutput.
@@ -440,6 +540,16 @@ func (o *OutputState) ApplyURNWithContext(ctx context.Context, applier interface
 	return o.ApplyTWithContext(ctx, applier).(URNOutput)
 }
 
+// ApplyURNPtr is like ApplyT, but returns a URNPtrOutput.
+func (o *OutputState) ApplyURNPtr(applier interface{}) URNPtrOutput {
+	return o.ApplyT(applier).(URNPtrOutput)
+}
+
+// ApplyURNPtrWithContext is like ApplyTWithContext, but returns a URNPtrOutput.
+func (o *OutputState) ApplyURNPtrWithContext(ctx context.Context, applier interface{}) URNPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(URNPtrOutput)
+}
+
 // ApplyURNArray is like ApplyT, but returns a URNArrayOutput.
 func (o *OutputState) ApplyURNArray(applier interface{}) URNArrayOutput {
 	return o.ApplyT(applier).(URNArrayOutput)
@@ -468,6 +578,16 @@ func (o *OutputState) ApplyUint(applier interface{}) UintOutput {
 // ApplyUintWithContext is like ApplyTWithContext, but returns a UintOutput.
 func (o *OutputState) ApplyUintWithContext(ctx context.Context, applier interface{}) UintOutput {
 	return o.ApplyTWithContext(ctx, applier).(UintOutput)
+}
+
+// ApplyUintPtr is like ApplyT, but returns a UintPtrOutput.
+func (o *OutputState) ApplyUintPtr(applier interface{}) UintPtrOutput {
+	return o.ApplyT(applier).(UintPtrOutput)
+}
+
+// ApplyUintPtrWithContext is like ApplyTWithContext, but returns a UintPtrOutput.
+func (o *OutputState) ApplyUintPtrWithContext(ctx context.Context, applier interface{}) UintPtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(UintPtrOutput)
 }
 
 // ApplyUintArray is like ApplyT, but returns a UintArrayOutput.
@@ -500,6 +620,16 @@ func (o *OutputState) ApplyUint16WithContext(ctx context.Context, applier interf
 	return o.ApplyTWithContext(ctx, applier).(Uint16Output)
 }
 
+// ApplyUint16Ptr is like ApplyT, but returns a Uint16PtrOutput.
+func (o *OutputState) ApplyUint16Ptr(applier interface{}) Uint16PtrOutput {
+	return o.ApplyT(applier).(Uint16PtrOutput)
+}
+
+// ApplyUint16PtrWithContext is like ApplyTWithContext, but returns a Uint16PtrOutput.
+func (o *OutputState) ApplyUint16PtrWithContext(ctx context.Context, applier interface{}) Uint16PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint16PtrOutput)
+}
+
 // ApplyUint16Array is like ApplyT, but returns a Uint16ArrayOutput.
 func (o *OutputState) ApplyUint16Array(applier interface{}) Uint16ArrayOutput {
 	return o.ApplyT(applier).(Uint16ArrayOutput)
@@ -528,6 +658,16 @@ func (o *OutputState) ApplyUint32(applier interface{}) Uint32Output {
 // ApplyUint32WithContext is like ApplyTWithContext, but returns a Uint32Output.
 func (o *OutputState) ApplyUint32WithContext(ctx context.Context, applier interface{}) Uint32Output {
 	return o.ApplyTWithContext(ctx, applier).(Uint32Output)
+}
+
+// ApplyUint32Ptr is like ApplyT, but returns a Uint32PtrOutput.
+func (o *OutputState) ApplyUint32Ptr(applier interface{}) Uint32PtrOutput {
+	return o.ApplyT(applier).(Uint32PtrOutput)
+}
+
+// ApplyUint32PtrWithContext is like ApplyTWithContext, but returns a Uint32PtrOutput.
+func (o *OutputState) ApplyUint32PtrWithContext(ctx context.Context, applier interface{}) Uint32PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint32PtrOutput)
 }
 
 // ApplyUint32Array is like ApplyT, but returns a Uint32ArrayOutput.
@@ -560,6 +700,16 @@ func (o *OutputState) ApplyUint64WithContext(ctx context.Context, applier interf
 	return o.ApplyTWithContext(ctx, applier).(Uint64Output)
 }
 
+// ApplyUint64Ptr is like ApplyT, but returns a Uint64PtrOutput.
+func (o *OutputState) ApplyUint64Ptr(applier interface{}) Uint64PtrOutput {
+	return o.ApplyT(applier).(Uint64PtrOutput)
+}
+
+// ApplyUint64PtrWithContext is like ApplyTWithContext, but returns a Uint64PtrOutput.
+func (o *OutputState) ApplyUint64PtrWithContext(ctx context.Context, applier interface{}) Uint64PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint64PtrOutput)
+}
+
 // ApplyUint64Array is like ApplyT, but returns a Uint64ArrayOutput.
 func (o *OutputState) ApplyUint64Array(applier interface{}) Uint64ArrayOutput {
 	return o.ApplyT(applier).(Uint64ArrayOutput)
@@ -588,6 +738,16 @@ func (o *OutputState) ApplyUint8(applier interface{}) Uint8Output {
 // ApplyUint8WithContext is like ApplyTWithContext, but returns a Uint8Output.
 func (o *OutputState) ApplyUint8WithContext(ctx context.Context, applier interface{}) Uint8Output {
 	return o.ApplyTWithContext(ctx, applier).(Uint8Output)
+}
+
+// ApplyUint8Ptr is like ApplyT, but returns a Uint8PtrOutput.
+func (o *OutputState) ApplyUint8Ptr(applier interface{}) Uint8PtrOutput {
+	return o.ApplyT(applier).(Uint8PtrOutput)
+}
+
+// ApplyUint8PtrWithContext is like ApplyTWithContext, but returns a Uint8PtrOutput.
+func (o *OutputState) ApplyUint8PtrWithContext(ctx context.Context, applier interface{}) Uint8PtrOutput {
+	return o.ApplyTWithContext(ctx, applier).(Uint8PtrOutput)
 }
 
 // ApplyUint8Array is like ApplyT, but returns a Uint8ArrayOutput.
@@ -1080,6 +1240,58 @@ func (o BoolOutput) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
 	return o
 }
 
+var boolPtrType = reflect.TypeOf((**bool)(nil)).Elem()
+
+// BoolPtrInput is an input type that accepts BoolPtr and BoolPtrOutput values.
+type BoolPtrInput interface {
+	Input
+
+	ToBoolPtrOutput() BoolPtrOutput
+	ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
+}
+
+type boolPtr bool
+
+// BoolPtr is an input type for *bool values.
+func BoolPtr(v bool) BoolPtrInput {
+	return (*boolPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*bool).
+func (*boolPtr) ElementType() reflect.Type {
+	return boolPtrType
+}
+
+func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
+	return ToOutput(in).(BoolPtrOutput)
+}
+
+func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
+	return ToOutputWithContext(ctx, in).(BoolPtrOutput)
+}
+
+// BoolPtrOutput is an Output that returns *bool values.
+type BoolPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*bool).
+func (BoolPtrOutput) ElementType() reflect.Type {
+	return boolPtrType
+}
+
+func (o BoolPtrOutput) ToBoolPtrOutput() BoolPtrOutput {
+	return o
+}
+
+func (o BoolPtrOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
+	return o
+}
+
+func (o BoolPtrOutput) Elem() BoolOutput {
+	return o.ApplyT(func(v *bool) bool {
+		return *v
+	}).(BoolOutput)
+}
+
 var boolArrayType = reflect.TypeOf((*[]bool)(nil)).Elem()
 
 // BoolArrayInput is an input type that accepts BoolArray and BoolArrayOutput values.
@@ -1218,6 +1430,58 @@ func (o Float32Output) ToFloat32OutputWithContext(ctx context.Context) Float32Ou
 	return o
 }
 
+var float32PtrType = reflect.TypeOf((**float32)(nil)).Elem()
+
+// Float32PtrInput is an input type that accepts Float32Ptr and Float32PtrOutput values.
+type Float32PtrInput interface {
+	Input
+
+	ToFloat32PtrOutput() Float32PtrOutput
+	ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput
+}
+
+type float32Ptr float32
+
+// Float32Ptr is an input type for *float32 values.
+func Float32Ptr(v float32) Float32PtrInput {
+	return (*float32Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*float32).
+func (*float32Ptr) ElementType() reflect.Type {
+	return float32PtrType
+}
+
+func (in *float32Ptr) ToFloat32PtrOutput() Float32PtrOutput {
+	return ToOutput(in).(Float32PtrOutput)
+}
+
+func (in *float32Ptr) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
+	return ToOutputWithContext(ctx, in).(Float32PtrOutput)
+}
+
+// Float32PtrOutput is an Output that returns *float32 values.
+type Float32PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*float32).
+func (Float32PtrOutput) ElementType() reflect.Type {
+	return float32PtrType
+}
+
+func (o Float32PtrOutput) ToFloat32PtrOutput() Float32PtrOutput {
+	return o
+}
+
+func (o Float32PtrOutput) ToFloat32PtrOutputWithContext(ctx context.Context) Float32PtrOutput {
+	return o
+}
+
+func (o Float32PtrOutput) Elem() Float32Output {
+	return o.ApplyT(func(v *float32) float32 {
+		return *v
+	}).(Float32Output)
+}
+
 var float32ArrayType = reflect.TypeOf((*[]float32)(nil)).Elem()
 
 // Float32ArrayInput is an input type that accepts Float32Array and Float32ArrayOutput values.
@@ -1354,6 +1618,58 @@ func (o Float64Output) ToFloat64Output() Float64Output {
 
 func (o Float64Output) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
 	return o
+}
+
+var float64PtrType = reflect.TypeOf((**float64)(nil)).Elem()
+
+// Float64PtrInput is an input type that accepts Float64Ptr and Float64PtrOutput values.
+type Float64PtrInput interface {
+	Input
+
+	ToFloat64PtrOutput() Float64PtrOutput
+	ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput
+}
+
+type float64Ptr float64
+
+// Float64Ptr is an input type for *float64 values.
+func Float64Ptr(v float64) Float64PtrInput {
+	return (*float64Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*float64).
+func (*float64Ptr) ElementType() reflect.Type {
+	return float64PtrType
+}
+
+func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
+	return ToOutput(in).(Float64PtrOutput)
+}
+
+func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
+	return ToOutputWithContext(ctx, in).(Float64PtrOutput)
+}
+
+// Float64PtrOutput is an Output that returns *float64 values.
+type Float64PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*float64).
+func (Float64PtrOutput) ElementType() reflect.Type {
+	return float64PtrType
+}
+
+func (o Float64PtrOutput) ToFloat64PtrOutput() Float64PtrOutput {
+	return o
+}
+
+func (o Float64PtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
+	return o
+}
+
+func (o Float64PtrOutput) Elem() Float64Output {
+	return o.ApplyT(func(v *float64) float64 {
+		return *v
+	}).(Float64Output)
 }
 
 var float64ArrayType = reflect.TypeOf((*[]float64)(nil)).Elem()
@@ -1507,6 +1823,58 @@ func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
+}
+
+var iDPtrType = reflect.TypeOf((**ID)(nil)).Elem()
+
+// IDPtrInput is an input type that accepts IDPtr and IDPtrOutput values.
+type IDPtrInput interface {
+	Input
+
+	ToIDPtrOutput() IDPtrOutput
+	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
+}
+
+type idPtr ID
+
+// IDPtr is an input type for *ID values.
+func IDPtr(v ID) IDPtrInput {
+	return (*idPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*ID).
+func (*idPtr) ElementType() reflect.Type {
+	return iDPtrType
+}
+
+func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
+	return ToOutput(in).(IDPtrOutput)
+}
+
+func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
+	return ToOutputWithContext(ctx, in).(IDPtrOutput)
+}
+
+// IDPtrOutput is an Output that returns *ID values.
+type IDPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*ID).
+func (IDPtrOutput) ElementType() reflect.Type {
+	return iDPtrType
+}
+
+func (o IDPtrOutput) ToIDPtrOutput() IDPtrOutput {
+	return o
+}
+
+func (o IDPtrOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
+	return o
+}
+
+func (o IDPtrOutput) Elem() IDOutput {
+	return o.ApplyT(func(v *ID) ID {
+		return *v
+	}).(IDOutput)
 }
 
 var iDArrayType = reflect.TypeOf((*[]ID)(nil)).Elem()
@@ -1743,6 +2111,58 @@ func (o IntOutput) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	return o
 }
 
+var intPtrType = reflect.TypeOf((**int)(nil)).Elem()
+
+// IntPtrInput is an input type that accepts IntPtr and IntPtrOutput values.
+type IntPtrInput interface {
+	Input
+
+	ToIntPtrOutput() IntPtrOutput
+	ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput
+}
+
+type intPtr int
+
+// IntPtr is an input type for *int values.
+func IntPtr(v int) IntPtrInput {
+	return (*intPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*int).
+func (*intPtr) ElementType() reflect.Type {
+	return intPtrType
+}
+
+func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
+	return ToOutput(in).(IntPtrOutput)
+}
+
+func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
+	return ToOutputWithContext(ctx, in).(IntPtrOutput)
+}
+
+// IntPtrOutput is an Output that returns *int values.
+type IntPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*int).
+func (IntPtrOutput) ElementType() reflect.Type {
+	return intPtrType
+}
+
+func (o IntPtrOutput) ToIntPtrOutput() IntPtrOutput {
+	return o
+}
+
+func (o IntPtrOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
+	return o
+}
+
+func (o IntPtrOutput) Elem() IntOutput {
+	return o.ApplyT(func(v *int) int {
+		return *v
+	}).(IntOutput)
+}
+
 var intArrayType = reflect.TypeOf((*[]int)(nil)).Elem()
 
 // IntArrayInput is an input type that accepts IntArray and IntArrayOutput values.
@@ -1879,6 +2299,58 @@ func (o Int16Output) ToInt16Output() Int16Output {
 
 func (o Int16Output) ToInt16OutputWithContext(ctx context.Context) Int16Output {
 	return o
+}
+
+var int16PtrType = reflect.TypeOf((**int16)(nil)).Elem()
+
+// Int16PtrInput is an input type that accepts Int16Ptr and Int16PtrOutput values.
+type Int16PtrInput interface {
+	Input
+
+	ToInt16PtrOutput() Int16PtrOutput
+	ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput
+}
+
+type int16Ptr int16
+
+// Int16Ptr is an input type for *int16 values.
+func Int16Ptr(v int16) Int16PtrInput {
+	return (*int16Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*int16).
+func (*int16Ptr) ElementType() reflect.Type {
+	return int16PtrType
+}
+
+func (in *int16Ptr) ToInt16PtrOutput() Int16PtrOutput {
+	return ToOutput(in).(Int16PtrOutput)
+}
+
+func (in *int16Ptr) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
+	return ToOutputWithContext(ctx, in).(Int16PtrOutput)
+}
+
+// Int16PtrOutput is an Output that returns *int16 values.
+type Int16PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*int16).
+func (Int16PtrOutput) ElementType() reflect.Type {
+	return int16PtrType
+}
+
+func (o Int16PtrOutput) ToInt16PtrOutput() Int16PtrOutput {
+	return o
+}
+
+func (o Int16PtrOutput) ToInt16PtrOutputWithContext(ctx context.Context) Int16PtrOutput {
+	return o
+}
+
+func (o Int16PtrOutput) Elem() Int16Output {
+	return o.ApplyT(func(v *int16) int16 {
+		return *v
+	}).(Int16Output)
 }
 
 var int16ArrayType = reflect.TypeOf((*[]int16)(nil)).Elem()
@@ -2019,6 +2491,58 @@ func (o Int32Output) ToInt32OutputWithContext(ctx context.Context) Int32Output {
 	return o
 }
 
+var int32PtrType = reflect.TypeOf((**int32)(nil)).Elem()
+
+// Int32PtrInput is an input type that accepts Int32Ptr and Int32PtrOutput values.
+type Int32PtrInput interface {
+	Input
+
+	ToInt32PtrOutput() Int32PtrOutput
+	ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput
+}
+
+type int32Ptr int32
+
+// Int32Ptr is an input type for *int32 values.
+func Int32Ptr(v int32) Int32PtrInput {
+	return (*int32Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*int32).
+func (*int32Ptr) ElementType() reflect.Type {
+	return int32PtrType
+}
+
+func (in *int32Ptr) ToInt32PtrOutput() Int32PtrOutput {
+	return ToOutput(in).(Int32PtrOutput)
+}
+
+func (in *int32Ptr) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
+	return ToOutputWithContext(ctx, in).(Int32PtrOutput)
+}
+
+// Int32PtrOutput is an Output that returns *int32 values.
+type Int32PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*int32).
+func (Int32PtrOutput) ElementType() reflect.Type {
+	return int32PtrType
+}
+
+func (o Int32PtrOutput) ToInt32PtrOutput() Int32PtrOutput {
+	return o
+}
+
+func (o Int32PtrOutput) ToInt32PtrOutputWithContext(ctx context.Context) Int32PtrOutput {
+	return o
+}
+
+func (o Int32PtrOutput) Elem() Int32Output {
+	return o.ApplyT(func(v *int32) int32 {
+		return *v
+	}).(Int32Output)
+}
+
 var int32ArrayType = reflect.TypeOf((*[]int32)(nil)).Elem()
 
 // Int32ArrayInput is an input type that accepts Int32Array and Int32ArrayOutput values.
@@ -2155,6 +2679,58 @@ func (o Int64Output) ToInt64Output() Int64Output {
 
 func (o Int64Output) ToInt64OutputWithContext(ctx context.Context) Int64Output {
 	return o
+}
+
+var int64PtrType = reflect.TypeOf((**int64)(nil)).Elem()
+
+// Int64PtrInput is an input type that accepts Int64Ptr and Int64PtrOutput values.
+type Int64PtrInput interface {
+	Input
+
+	ToInt64PtrOutput() Int64PtrOutput
+	ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput
+}
+
+type int64Ptr int64
+
+// Int64Ptr is an input type for *int64 values.
+func Int64Ptr(v int64) Int64PtrInput {
+	return (*int64Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*int64).
+func (*int64Ptr) ElementType() reflect.Type {
+	return int64PtrType
+}
+
+func (in *int64Ptr) ToInt64PtrOutput() Int64PtrOutput {
+	return ToOutput(in).(Int64PtrOutput)
+}
+
+func (in *int64Ptr) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
+	return ToOutputWithContext(ctx, in).(Int64PtrOutput)
+}
+
+// Int64PtrOutput is an Output that returns *int64 values.
+type Int64PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*int64).
+func (Int64PtrOutput) ElementType() reflect.Type {
+	return int64PtrType
+}
+
+func (o Int64PtrOutput) ToInt64PtrOutput() Int64PtrOutput {
+	return o
+}
+
+func (o Int64PtrOutput) ToInt64PtrOutputWithContext(ctx context.Context) Int64PtrOutput {
+	return o
+}
+
+func (o Int64PtrOutput) Elem() Int64Output {
+	return o.ApplyT(func(v *int64) int64 {
+		return *v
+	}).(Int64Output)
 }
 
 var int64ArrayType = reflect.TypeOf((*[]int64)(nil)).Elem()
@@ -2295,6 +2871,58 @@ func (o Int8Output) ToInt8OutputWithContext(ctx context.Context) Int8Output {
 	return o
 }
 
+var int8PtrType = reflect.TypeOf((**int8)(nil)).Elem()
+
+// Int8PtrInput is an input type that accepts Int8Ptr and Int8PtrOutput values.
+type Int8PtrInput interface {
+	Input
+
+	ToInt8PtrOutput() Int8PtrOutput
+	ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput
+}
+
+type int8Ptr int8
+
+// Int8Ptr is an input type for *int8 values.
+func Int8Ptr(v int8) Int8PtrInput {
+	return (*int8Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*int8).
+func (*int8Ptr) ElementType() reflect.Type {
+	return int8PtrType
+}
+
+func (in *int8Ptr) ToInt8PtrOutput() Int8PtrOutput {
+	return ToOutput(in).(Int8PtrOutput)
+}
+
+func (in *int8Ptr) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
+	return ToOutputWithContext(ctx, in).(Int8PtrOutput)
+}
+
+// Int8PtrOutput is an Output that returns *int8 values.
+type Int8PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*int8).
+func (Int8PtrOutput) ElementType() reflect.Type {
+	return int8PtrType
+}
+
+func (o Int8PtrOutput) ToInt8PtrOutput() Int8PtrOutput {
+	return o
+}
+
+func (o Int8PtrOutput) ToInt8PtrOutputWithContext(ctx context.Context) Int8PtrOutput {
+	return o
+}
+
+func (o Int8PtrOutput) Elem() Int8Output {
+	return o.ApplyT(func(v *int8) int8 {
+		return *v
+	}).(Int8Output)
+}
+
 var int8ArrayType = reflect.TypeOf((*[]int8)(nil)).Elem()
 
 // Int8ArrayInput is an input type that accepts Int8Array and Int8ArrayOutput values.
@@ -2431,6 +3059,58 @@ func (o StringOutput) ToStringOutput() StringOutput {
 
 func (o StringOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o
+}
+
+var stringPtrType = reflect.TypeOf((**string)(nil)).Elem()
+
+// StringPtrInput is an input type that accepts StringPtr and StringPtrOutput values.
+type StringPtrInput interface {
+	Input
+
+	ToStringPtrOutput() StringPtrOutput
+	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
+}
+
+type stringPtr string
+
+// StringPtr is an input type for *string values.
+func StringPtr(v string) StringPtrInput {
+	return (*stringPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*string).
+func (*stringPtr) ElementType() reflect.Type {
+	return stringPtrType
+}
+
+func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
+	return ToOutput(in).(StringPtrOutput)
+}
+
+func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return ToOutputWithContext(ctx, in).(StringPtrOutput)
+}
+
+// StringPtrOutput is an Output that returns *string values.
+type StringPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*string).
+func (StringPtrOutput) ElementType() reflect.Type {
+	return stringPtrType
+}
+
+func (o StringPtrOutput) ToStringPtrOutput() StringPtrOutput {
+	return o
+}
+
+func (o StringPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o
+}
+
+func (o StringPtrOutput) Elem() StringOutput {
+	return o.ApplyT(func(v *string) string {
+		return *v
+	}).(StringOutput)
 }
 
 var stringArrayType = reflect.TypeOf((*[]string)(nil)).Elem()
@@ -2586,6 +3266,58 @@ func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	}).(StringOutput)
 }
 
+var uRNPtrType = reflect.TypeOf((**URN)(nil)).Elem()
+
+// URNPtrInput is an input type that accepts URNPtr and URNPtrOutput values.
+type URNPtrInput interface {
+	Input
+
+	ToURNPtrOutput() URNPtrOutput
+	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
+}
+
+type urnPtr URN
+
+// URNPtr is an input type for *URN values.
+func URNPtr(v URN) URNPtrInput {
+	return (*urnPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*URN).
+func (*urnPtr) ElementType() reflect.Type {
+	return uRNPtrType
+}
+
+func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
+	return ToOutput(in).(URNPtrOutput)
+}
+
+func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
+	return ToOutputWithContext(ctx, in).(URNPtrOutput)
+}
+
+// URNPtrOutput is an Output that returns *URN values.
+type URNPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*URN).
+func (URNPtrOutput) ElementType() reflect.Type {
+	return uRNPtrType
+}
+
+func (o URNPtrOutput) ToURNPtrOutput() URNPtrOutput {
+	return o
+}
+
+func (o URNPtrOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
+	return o
+}
+
+func (o URNPtrOutput) Elem() URNOutput {
+	return o.ApplyT(func(v *URN) URN {
+		return *v
+	}).(URNOutput)
+}
+
 var uRNArrayType = reflect.TypeOf((*[]URN)(nil)).Elem()
 
 // URNArrayInput is an input type that accepts URNArray and URNArrayOutput values.
@@ -2722,6 +3454,58 @@ func (o UintOutput) ToUintOutput() UintOutput {
 
 func (o UintOutput) ToUintOutputWithContext(ctx context.Context) UintOutput {
 	return o
+}
+
+var uintPtrType = reflect.TypeOf((**uint)(nil)).Elem()
+
+// UintPtrInput is an input type that accepts UintPtr and UintPtrOutput values.
+type UintPtrInput interface {
+	Input
+
+	ToUintPtrOutput() UintPtrOutput
+	ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput
+}
+
+type uintPtr uint
+
+// UintPtr is an input type for *uint values.
+func UintPtr(v uint) UintPtrInput {
+	return (*uintPtr)(&v)
+}
+
+// ElementType returns the element type of this Input (*uint).
+func (*uintPtr) ElementType() reflect.Type {
+	return uintPtrType
+}
+
+func (in *uintPtr) ToUintPtrOutput() UintPtrOutput {
+	return ToOutput(in).(UintPtrOutput)
+}
+
+func (in *uintPtr) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
+	return ToOutputWithContext(ctx, in).(UintPtrOutput)
+}
+
+// UintPtrOutput is an Output that returns *uint values.
+type UintPtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*uint).
+func (UintPtrOutput) ElementType() reflect.Type {
+	return uintPtrType
+}
+
+func (o UintPtrOutput) ToUintPtrOutput() UintPtrOutput {
+	return o
+}
+
+func (o UintPtrOutput) ToUintPtrOutputWithContext(ctx context.Context) UintPtrOutput {
+	return o
+}
+
+func (o UintPtrOutput) Elem() UintOutput {
+	return o.ApplyT(func(v *uint) uint {
+		return *v
+	}).(UintOutput)
 }
 
 var uintArrayType = reflect.TypeOf((*[]uint)(nil)).Elem()
@@ -2862,6 +3646,58 @@ func (o Uint16Output) ToUint16OutputWithContext(ctx context.Context) Uint16Outpu
 	return o
 }
 
+var uint16PtrType = reflect.TypeOf((**uint16)(nil)).Elem()
+
+// Uint16PtrInput is an input type that accepts Uint16Ptr and Uint16PtrOutput values.
+type Uint16PtrInput interface {
+	Input
+
+	ToUint16PtrOutput() Uint16PtrOutput
+	ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput
+}
+
+type uint16Ptr uint16
+
+// Uint16Ptr is an input type for *uint16 values.
+func Uint16Ptr(v uint16) Uint16PtrInput {
+	return (*uint16Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*uint16).
+func (*uint16Ptr) ElementType() reflect.Type {
+	return uint16PtrType
+}
+
+func (in *uint16Ptr) ToUint16PtrOutput() Uint16PtrOutput {
+	return ToOutput(in).(Uint16PtrOutput)
+}
+
+func (in *uint16Ptr) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
+	return ToOutputWithContext(ctx, in).(Uint16PtrOutput)
+}
+
+// Uint16PtrOutput is an Output that returns *uint16 values.
+type Uint16PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*uint16).
+func (Uint16PtrOutput) ElementType() reflect.Type {
+	return uint16PtrType
+}
+
+func (o Uint16PtrOutput) ToUint16PtrOutput() Uint16PtrOutput {
+	return o
+}
+
+func (o Uint16PtrOutput) ToUint16PtrOutputWithContext(ctx context.Context) Uint16PtrOutput {
+	return o
+}
+
+func (o Uint16PtrOutput) Elem() Uint16Output {
+	return o.ApplyT(func(v *uint16) uint16 {
+		return *v
+	}).(Uint16Output)
+}
+
 var uint16ArrayType = reflect.TypeOf((*[]uint16)(nil)).Elem()
 
 // Uint16ArrayInput is an input type that accepts Uint16Array and Uint16ArrayOutput values.
@@ -2998,6 +3834,58 @@ func (o Uint32Output) ToUint32Output() Uint32Output {
 
 func (o Uint32Output) ToUint32OutputWithContext(ctx context.Context) Uint32Output {
 	return o
+}
+
+var uint32PtrType = reflect.TypeOf((**uint32)(nil)).Elem()
+
+// Uint32PtrInput is an input type that accepts Uint32Ptr and Uint32PtrOutput values.
+type Uint32PtrInput interface {
+	Input
+
+	ToUint32PtrOutput() Uint32PtrOutput
+	ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput
+}
+
+type uint32Ptr uint32
+
+// Uint32Ptr is an input type for *uint32 values.
+func Uint32Ptr(v uint32) Uint32PtrInput {
+	return (*uint32Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*uint32).
+func (*uint32Ptr) ElementType() reflect.Type {
+	return uint32PtrType
+}
+
+func (in *uint32Ptr) ToUint32PtrOutput() Uint32PtrOutput {
+	return ToOutput(in).(Uint32PtrOutput)
+}
+
+func (in *uint32Ptr) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
+	return ToOutputWithContext(ctx, in).(Uint32PtrOutput)
+}
+
+// Uint32PtrOutput is an Output that returns *uint32 values.
+type Uint32PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*uint32).
+func (Uint32PtrOutput) ElementType() reflect.Type {
+	return uint32PtrType
+}
+
+func (o Uint32PtrOutput) ToUint32PtrOutput() Uint32PtrOutput {
+	return o
+}
+
+func (o Uint32PtrOutput) ToUint32PtrOutputWithContext(ctx context.Context) Uint32PtrOutput {
+	return o
+}
+
+func (o Uint32PtrOutput) Elem() Uint32Output {
+	return o.ApplyT(func(v *uint32) uint32 {
+		return *v
+	}).(Uint32Output)
 }
 
 var uint32ArrayType = reflect.TypeOf((*[]uint32)(nil)).Elem()
@@ -3138,6 +4026,58 @@ func (o Uint64Output) ToUint64OutputWithContext(ctx context.Context) Uint64Outpu
 	return o
 }
 
+var uint64PtrType = reflect.TypeOf((**uint64)(nil)).Elem()
+
+// Uint64PtrInput is an input type that accepts Uint64Ptr and Uint64PtrOutput values.
+type Uint64PtrInput interface {
+	Input
+
+	ToUint64PtrOutput() Uint64PtrOutput
+	ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput
+}
+
+type uint64Ptr uint64
+
+// Uint64Ptr is an input type for *uint64 values.
+func Uint64Ptr(v uint64) Uint64PtrInput {
+	return (*uint64Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*uint64).
+func (*uint64Ptr) ElementType() reflect.Type {
+	return uint64PtrType
+}
+
+func (in *uint64Ptr) ToUint64PtrOutput() Uint64PtrOutput {
+	return ToOutput(in).(Uint64PtrOutput)
+}
+
+func (in *uint64Ptr) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
+	return ToOutputWithContext(ctx, in).(Uint64PtrOutput)
+}
+
+// Uint64PtrOutput is an Output that returns *uint64 values.
+type Uint64PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*uint64).
+func (Uint64PtrOutput) ElementType() reflect.Type {
+	return uint64PtrType
+}
+
+func (o Uint64PtrOutput) ToUint64PtrOutput() Uint64PtrOutput {
+	return o
+}
+
+func (o Uint64PtrOutput) ToUint64PtrOutputWithContext(ctx context.Context) Uint64PtrOutput {
+	return o
+}
+
+func (o Uint64PtrOutput) Elem() Uint64Output {
+	return o.ApplyT(func(v *uint64) uint64 {
+		return *v
+	}).(Uint64Output)
+}
+
 var uint64ArrayType = reflect.TypeOf((*[]uint64)(nil)).Elem()
 
 // Uint64ArrayInput is an input type that accepts Uint64Array and Uint64ArrayOutput values.
@@ -3276,6 +4216,58 @@ func (o Uint8Output) ToUint8OutputWithContext(ctx context.Context) Uint8Output {
 	return o
 }
 
+var uint8PtrType = reflect.TypeOf((**uint8)(nil)).Elem()
+
+// Uint8PtrInput is an input type that accepts Uint8Ptr and Uint8PtrOutput values.
+type Uint8PtrInput interface {
+	Input
+
+	ToUint8PtrOutput() Uint8PtrOutput
+	ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput
+}
+
+type uint8Ptr uint8
+
+// Uint8Ptr is an input type for *uint8 values.
+func Uint8Ptr(v uint8) Uint8PtrInput {
+	return (*uint8Ptr)(&v)
+}
+
+// ElementType returns the element type of this Input (*uint8).
+func (*uint8Ptr) ElementType() reflect.Type {
+	return uint8PtrType
+}
+
+func (in *uint8Ptr) ToUint8PtrOutput() Uint8PtrOutput {
+	return ToOutput(in).(Uint8PtrOutput)
+}
+
+func (in *uint8Ptr) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
+	return ToOutputWithContext(ctx, in).(Uint8PtrOutput)
+}
+
+// Uint8PtrOutput is an Output that returns *uint8 values.
+type Uint8PtrOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (*uint8).
+func (Uint8PtrOutput) ElementType() reflect.Type {
+	return uint8PtrType
+}
+
+func (o Uint8PtrOutput) ToUint8PtrOutput() Uint8PtrOutput {
+	return o
+}
+
+func (o Uint8PtrOutput) ToUint8PtrOutputWithContext(ctx context.Context) Uint8PtrOutput {
+	return o
+}
+
+func (o Uint8PtrOutput) Elem() Uint8Output {
+	return o.ApplyT(func(v *uint8) uint8 {
+		return *v
+	}).(Uint8Output)
+}
+
 var uint8ArrayType = reflect.TypeOf((*[]uint8)(nil)).Elem()
 
 // Uint8ArrayInput is an input type that accepts Uint8Array and Uint8ArrayOutput values.
@@ -3372,6 +4364,15 @@ func (o Uint8MapOutput) MapIndex(k StringInput) Uint8Output {
 	}).(Uint8Output)
 }
 
+func getResolvedValue(input Input) (reflect.Value, bool) {
+	switch input := input.(type) {
+	case *asset, *archive:
+		return reflect.ValueOf(input), true
+	default:
+		return reflect.Value{}, false
+	}
+}
+
 func init() {
 	RegisterOutputType(ArchiveOutput{})
 	RegisterOutputType(ArchiveArrayOutput{})
@@ -3383,53 +4384,69 @@ func init() {
 	RegisterOutputType(AssetOrArchiveArrayOutput{})
 	RegisterOutputType(AssetOrArchiveMapOutput{})
 	RegisterOutputType(BoolOutput{})
+	RegisterOutputType(BoolPtrOutput{})
 	RegisterOutputType(BoolArrayOutput{})
 	RegisterOutputType(BoolMapOutput{})
 	RegisterOutputType(Float32Output{})
+	RegisterOutputType(Float32PtrOutput{})
 	RegisterOutputType(Float32ArrayOutput{})
 	RegisterOutputType(Float32MapOutput{})
 	RegisterOutputType(Float64Output{})
+	RegisterOutputType(Float64PtrOutput{})
 	RegisterOutputType(Float64ArrayOutput{})
 	RegisterOutputType(Float64MapOutput{})
 	RegisterOutputType(IDOutput{})
+	RegisterOutputType(IDPtrOutput{})
 	RegisterOutputType(IDArrayOutput{})
 	RegisterOutputType(IDMapOutput{})
 	RegisterOutputType(ArrayOutput{})
 	RegisterOutputType(MapOutput{})
 	RegisterOutputType(IntOutput{})
+	RegisterOutputType(IntPtrOutput{})
 	RegisterOutputType(IntArrayOutput{})
 	RegisterOutputType(IntMapOutput{})
 	RegisterOutputType(Int16Output{})
+	RegisterOutputType(Int16PtrOutput{})
 	RegisterOutputType(Int16ArrayOutput{})
 	RegisterOutputType(Int16MapOutput{})
 	RegisterOutputType(Int32Output{})
+	RegisterOutputType(Int32PtrOutput{})
 	RegisterOutputType(Int32ArrayOutput{})
 	RegisterOutputType(Int32MapOutput{})
 	RegisterOutputType(Int64Output{})
+	RegisterOutputType(Int64PtrOutput{})
 	RegisterOutputType(Int64ArrayOutput{})
 	RegisterOutputType(Int64MapOutput{})
 	RegisterOutputType(Int8Output{})
+	RegisterOutputType(Int8PtrOutput{})
 	RegisterOutputType(Int8ArrayOutput{})
 	RegisterOutputType(Int8MapOutput{})
 	RegisterOutputType(StringOutput{})
+	RegisterOutputType(StringPtrOutput{})
 	RegisterOutputType(StringArrayOutput{})
 	RegisterOutputType(StringMapOutput{})
 	RegisterOutputType(URNOutput{})
+	RegisterOutputType(URNPtrOutput{})
 	RegisterOutputType(URNArrayOutput{})
 	RegisterOutputType(URNMapOutput{})
 	RegisterOutputType(UintOutput{})
+	RegisterOutputType(UintPtrOutput{})
 	RegisterOutputType(UintArrayOutput{})
 	RegisterOutputType(UintMapOutput{})
 	RegisterOutputType(Uint16Output{})
+	RegisterOutputType(Uint16PtrOutput{})
 	RegisterOutputType(Uint16ArrayOutput{})
 	RegisterOutputType(Uint16MapOutput{})
 	RegisterOutputType(Uint32Output{})
+	RegisterOutputType(Uint32PtrOutput{})
 	RegisterOutputType(Uint32ArrayOutput{})
 	RegisterOutputType(Uint32MapOutput{})
 	RegisterOutputType(Uint64Output{})
+	RegisterOutputType(Uint64PtrOutput{})
 	RegisterOutputType(Uint64ArrayOutput{})
 	RegisterOutputType(Uint64MapOutput{})
 	RegisterOutputType(Uint8Output{})
+	RegisterOutputType(Uint8PtrOutput{})
 	RegisterOutputType(Uint8ArrayOutput{})
 	RegisterOutputType(Uint8MapOutput{})
 }

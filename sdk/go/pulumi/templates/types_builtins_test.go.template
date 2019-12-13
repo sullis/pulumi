@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint: lll
+// nolint: lll, unconvert
 package pulumi
 
 import (
@@ -130,10 +130,11 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true) }()
 
-		var ok bool
 {{range .Builtins}}
-		_, ok = out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
-		assert.True(t, ok)
+		t.Run("ApplyT::{{.Name}}Output", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) {{.ElementType}} { return *new({{.ElementType}}) }).({{.Name}}Output)
+			assert.True(t, ok)
+		})
 {{end}}
 	}
 	// Test some chained applies.
@@ -246,24 +247,22 @@ func TestOutputApply(t *testing.T) {
 }
 
 // Test that ToOutput works with all builtin input types
-func TestToOutputBuiltins(t *testing.T) {
 {{range .Builtins}}
-	{
-		out := ToOutput({{.Example}})
-		_, ok := out.({{.Name}}Input)
-		assert.True(t, ok)
+func TestToOutput{{.Name}}(t *testing.T) {
+	out := ToOutput({{.Example}})
+	_, ok := out.({{.Name}}Input)
+	assert.True(t, ok)
 
-		_, known, err := await(out)
-		assert.True(t, known)
-		assert.NoError(t, err)
+	_, known, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
 
-		out = ToOutput(out)
-		_, ok = out.({{.Name}}Input)
-		assert.True(t, ok)
+	out = ToOutput(out)
+	_, ok = out.({{.Name}}Input)
+	assert.True(t, ok)
 
-		_, known, err = await(out)
-		assert.True(t, known)
-		assert.NoError(t, err)
-	}
-{{end}}
+	_, known, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
 }
+{{end}}

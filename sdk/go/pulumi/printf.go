@@ -5,32 +5,20 @@ import (
 	"io"
 )
 
-func allArgs(args []interface{}) ArrayOutput {
-	all := make(Array, len(args))
-	for i, arg := range args {
-		if input, ok := arg.(Input); ok {
-			all[i] = input
-		} else {
-			all[i] = Any(arg)
-		}
-	}
-	return All(all...)
-}
-
 func Printf(format string, args ...interface{}) IntOutput {
-	return allArgs(args).ApplyT(func(args interface{}) (int, error) {
-		return fmt.Printf(format, args.([]interface{})...)
+	return All(args...).ApplyT(func(args []interface{}) (int, error) {
+		return fmt.Printf(format, args...)
 	}).(IntOutput)
 }
 
 func Fprintf(w io.Writer, format string, args ...interface{}) IntOutput {
-	return allArgs(args).ApplyT(func(args interface{}) (int, error) {
-		return fmt.Fprintf(w, format, args.([]interface{})...)
+	return All(args...).ApplyT(func(args []interface{}) (int, error) {
+		return fmt.Fprintf(w, format, args...)
 	}).(IntOutput)
 }
 
 func Sprintf(format string, args ...interface{}) StringOutput {
-	return allArgs(args).ApplyT(func(args interface{}) string {
-		return fmt.Sprintf(format, args.([]interface{})...)
+	return All(args...).ApplyT(func(args []interface{}) string {
+		return fmt.Sprintf(format, args...)
 	}).(StringOutput)
 }

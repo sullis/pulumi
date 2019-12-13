@@ -18,7 +18,6 @@ package pulumi
 import (
 	"context"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -39,6 +38,8 @@ type Output interface {
 
 	getState() *OutputState
 	dependencies() []Resource
+	fulfillValue(value reflect.Value, known bool, err error)
+	resolveValue(value reflect.Value, known bool)
 	fulfill(value interface{}, known bool, err error)
 	resolve(value interface{}, known bool)
 	reject(err error)
@@ -46,6 +47,7 @@ type Output interface {
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
+var inputType = reflect.TypeOf((*Input)(nil)).Elem()
 
 var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
 
@@ -95,6 +97,10 @@ func (o *OutputState) dependencies() []Resource {
 }
 
 func (o *OutputState) fulfill(value interface{}, known bool, err error) {
+	o.fulfillValue(reflect.ValueOf(value), known, err)
+}
+
+func (o *OutputState) fulfillValue(value reflect.Value, known bool, err error) {
 	if o == nil {
 		return
 	}
@@ -112,12 +118,19 @@ func (o *OutputState) fulfill(value interface{}, known bool, err error) {
 	if err != nil {
 		o.state, o.err, o.known = outputRejected, err, true
 	} else {
-		o.state, o.value, o.known = outputResolved, value, known
+		if value.IsValid() {
+			reflect.ValueOf(&o.value).Elem().Set(value)
+		}
+		o.state, o.known = outputResolved, known
 	}
 }
 
 func (o *OutputState) resolve(value interface{}, known bool) {
 	o.fulfill(value, known, nil)
+}
+
+func (o *OutputState) resolveValue(value reflect.Value, known bool) {
+	o.fulfillValue(value, known, nil)
 }
 
 func (o *OutputState) reject(err error) {
@@ -376,7 +389,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 
 		// Fulfill the result.
-		result.fulfill(results[0].Interface(), true, nil)
+		result.fulfillValue(results[0], true, nil)
 	}()
 	return result
 }
@@ -384,56 +397,20 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 // All returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each element of the
 // array will contain the resolved value of the corresponding output. The output will be rejected if any of the inputs
 // is rejected.
-func All(inputs ...Input) ArrayOutput {
+func All(inputs ...interface{}) ArrayOutput {
 	return AllWithContext(context.Background(), inputs...)
 }
 
 // AllWithContext returns an ArrayOutput that will resolve when all of the provided inputs will resolve. Each
 // element of the array will contain the resolved value of the corresponding output. The output will be rejected if any
 // of the inputs is rejected.
-func AllWithContext(ctx context.Context, inputs ...Input) ArrayOutput {
-	return ToOutputWithContext(ctx, Array(inputs)).(ArrayOutput)
+func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
+	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencySet(input reflect.Value, deps map[Resource]struct{}) {
-	inputV := input.Interface()
-
-	// If the input does not implement the Input interface, it has no dependencies.
-	if _, ok := inputV.(Input); !ok {
-		return
-	}
-
-	// Check for an Output that we can pull dependencies off of.
-	if output, ok := inputV.(Output); ok {
-		for _, d := range output.dependencies() {
-			deps[d] = struct{}{}
-		}
-		return
-	}
-
-	switch input.Kind() {
-	case reflect.Struct:
-		numFields := input.Type().NumField()
-		for i := 0; i < numFields; i++ {
-			gatherDependencySet(input.Field(i), deps)
-		}
-	case reflect.Slice:
-		l := input.Len()
-		for i := 0; i < l; i++ {
-			gatherDependencySet(input.Index(i), deps)
-		}
-	case reflect.Map:
-		iter := input.MapRange()
-		for iter.Next() {
-			gatherDependencySet(iter.Key(), deps)
-			gatherDependencySet(iter.Value(), deps)
-		}
-	}
-}
-
-func gatherDependencies(input Input) []Resource {
+func gatherDependencies(v interface{}) []Resource {
 	depSet := make(map[Resource]struct{})
-	gatherDependencySet(reflect.ValueOf(input), depSet)
+	gatherDependencySet(reflect.ValueOf(v), depSet)
 
 	if len(depSet) == 0 {
 		return nil
@@ -446,207 +423,258 @@ func gatherDependencies(input Input) []Resource {
 	return deps
 }
 
-func awaitStructFields(ctx context.Context, input reflect.Value, resolved reflect.Value) (bool, error) {
-	inputType, resolvedType := input.Type(), resolved.Type()
-
-	contract.Assert(inputType.Kind() == reflect.Struct)
-	contract.Assert(resolvedType.Kind() == reflect.Struct)
-
-	// We need to map the fields of the input struct to those of the output struct. We'll build a mapping from name to
-	// to field index for the resolved type up front.
-	nameToIndex := map[string]int{}
-	numFields := resolvedType.NumField()
-	for i := 0; i < numFields; i++ {
-		nameToIndex[resolvedType.Field(i).Name] = i
-	}
-
-	// Now, resolve each field in the input.
-	numFields = inputType.NumField()
-	for i := 0; i < numFields; i++ {
-		fieldName := inputType.Field(i).Name
-		j, ok := nameToIndex[fieldName]
-		if !ok {
-			err := errors.Errorf("unknown field %v when resolving %v to %v", fieldName, inputType, resolvedType)
-			return true, err
+func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
+	for {
+		// Check for an Output that we can pull dependencies off of.
+		if v.Type().Implements(outputType) && v.CanInterface() {
+			output := v.Convert(outputType).Interface().(Output)
+			for _, d := range output.dependencies() {
+				deps[d] = struct{}{}
+			}
+			return
 		}
 
-		// Delete the mapping to indicate that we've resolved the field.
-		delete(nameToIndex, fieldName)
-
-		known, err := awaitInputs(ctx, input.Field(i), resolved.Field(j))
-		if err != nil || !known {
-			return known, err
+		switch v.Kind() {
+		case reflect.Interface, reflect.Ptr:
+			if v.IsNil() {
+				return
+			}
+			v = v.Elem()
+			continue
+		case reflect.Struct:
+			numFields := v.Type().NumField()
+			for i := 0; i < numFields; i++ {
+				gatherDependencySet(v.Field(i), deps)
+			}
+		case reflect.Array, reflect.Slice:
+			l := v.Len()
+			for i := 0; i < l; i++ {
+				gatherDependencySet(v.Index(i), deps)
+			}
+		case reflect.Map:
+			iter := v.MapRange()
+			for iter.Next() {
+				gatherDependencySet(iter.Key(), deps)
+				gatherDependencySet(iter.Value(), deps)
+			}
 		}
+		return
 	}
-
-	// Check for unassigned fields.
-	if len(nameToIndex) != 0 {
-		missing := make([]string, 0, len(nameToIndex))
-		for name := range nameToIndex {
-			missing = append(missing, name)
-		}
-		err := errors.Errorf("missing fields %s when resolving %v to %v", strings.Join(missing, ", "), inputType,
-			resolvedType)
-		return true, err
-	}
-
-	return true, nil
 }
 
-func awaitInputs(ctx context.Context, input reflect.Value, resolved reflect.Value) (bool, error) {
-	contract.Assert(resolved.CanSet())
-	contract.Assert(input.IsValid())
-	contract.Assert(input.CanInterface())
-
-	inputV := input.Interface()
-
-	// If the input is an Output, await it.
-	if out, ok := inputV.(Output); ok {
-		v, known, err := out.await(ctx)
-		if err != nil || !known {
-			return known, err
-		}
-		input, inputV = reflect.ValueOf(v), v
+func checkToOutputMethod(m reflect.Value, outputType reflect.Type) bool {
+	if !m.IsValid() {
+		return false
 	}
-
-	// If we have no value for the result, we're done.
-	if inputV == nil {
-		return true, nil
+	mt := m.Type()
+	if mt.NumIn() != 1 || mt.In(0) != contextType {
+		return false
 	}
+	return mt.NumOut() == 1 && mt.Out(0) == outputType
+}
 
-	// If the dest type is a pointer, allocate storage for the result.
-	if resolved.Kind() == reflect.Ptr {
-		elem := reflect.New(resolved.Type().Elem())
-		resolved.Set(elem)
-		resolved = elem.Elem()
-	}
-
-	// If the input does not implement the Input interface, we will stop here.
-	asInput, ok := inputV.(Input)
+func callToOutputMethod(ctx context.Context, input reflect.Value, resolvedType reflect.Type) (Output, bool) {
+	ot, ok := concreteTypeToOutputType.Load(resolvedType)
 	if !ok {
-		if !input.Type().AssignableTo(resolved.Type()) {
-			return true, errors.Errorf("cannot resolve a %v to a %v", resolved.Type(), input.Type())
-		}
-		resolved.Set(input)
+		return nil, false
+	}
+	outputType := ot.(reflect.Type)
+
+	toOutputMethodName := "To" + outputType.Name() + "WithContext"
+	toOutputMethod := input.MethodByName(toOutputMethodName)
+	if !checkToOutputMethod(toOutputMethod, outputType) {
+		return nil, false
+	}
+
+	return toOutputMethod.Call([]reflect.Value{reflect.ValueOf(ctx)})[0].Interface().(Output), true
+}
+
+func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, error) {
+	contract.Assert(v.IsValid())
+
+	if !resolved.CanSet() {
 		return true, nil
 	}
 
-	// Check for some well-known types.
-	switch inputV := inputV.(type) {
-	case *archive, *asset:
-		// These are already fully-resolved.
-		input = reflect.ValueOf(inputV)
-		if resolved.Kind() != reflect.Ptr && resolved.Kind() != reflect.Interface {
-			input = input.Elem()
-		}
-		resolved.Set(input)
-		return true, nil
-	}
-
-	inputType, resolvedType := input.Type(), resolved.Type()
-
-	// If the input is an interface, poke through to its concrete type.
-	if inputType.Kind() == reflect.Interface {
-		input = input.Elem()
-		inputType = input.Type()
-	}
-
-	// If the dest type is an interface, we may not be able to assign to it.
-	if resolvedType.Kind() == reflect.Interface {
-		// Pull the element type from the input type.
-		elementType := asInput.ElementType()
-		if !elementType.AssignableTo(resolvedType) {
-			return false, errors.Errorf("cannot resolve a %v to a %v", resolvedType, elementType)
+	// If the value is an Input with of a different element type, turn it into an Output of the appropriate type and
+	// await it.
+	valueType, isInput := v.Type(), false
+	if v.CanInterface() && valueType.Implements(inputType) {
+		input, isNonNil := v.Interface().(Input)
+		if !isNonNil {
+			// A nil input is already fully-resolved.
+			return true, nil
 		}
 
-		// Create a new resolved value using the element type.
-		iface := resolved
-		resolved, resolvedType = reflect.New(elementType).Elem(), elementType
-		defer func() { iface.Set(resolved) }()
-	}
+		valueType = input.ElementType()
+		assignInput := false
 
-	// Now, examine the type and continue accordingly.
-	if inputType.Kind() != resolvedType.Kind() {
-		return false, errors.Errorf("cannot resolve a %v to a %v", resolvedType, inputType)
-	}
-
-	switch inputType.Kind() {
-	case reflect.Struct:
-		return awaitStructFields(ctx, input, resolved)
-	case reflect.Slice:
-		l := input.Len()
-		slice := reflect.MakeSlice(resolvedType, l, l)
-
-		for i := 0; i < l; i++ {
-			eknown, err := awaitInputs(ctx, input.Index(i), slice.Index(i))
-			if err != nil || !eknown {
-				return eknown, err
+		// If the element type of the input is not identical to the type of the destination and the destination is not
+		// the any type (i.e. interface{}), attempt to convert the input to the appropriately-typed output.
+		if valueType != resolved.Type() && resolved.Type() != anyType {
+			if newOutput, ok := callToOutputMethod(ctx, reflect.ValueOf(input), resolved.Type()); ok {
+				// We were able to convert the input. Use the result as the new input value.
+				input = newOutput
+			} else if !valueType.AssignableTo(resolved.Type()) {
+				// If the value type is not assignable to the destination, see if we can assign the input value itself
+				// to the destination.
+				if !v.Type().AssignableTo(resolved.Type()) {
+					panic(errors.Errorf("cannot convert an input of type %T to a value of type %v",
+						input, resolved.Type()))
+				} else {
+					assignInput = true
+				}
 			}
 		}
 
-		resolved.Set(slice)
-		return true, nil
-	case reflect.Map:
-		result := reflect.MakeMap(resolvedType)
-		resolvedKeyType, resolvedValueType := resolvedType.Key(), resolvedType.Elem()
-
-		iter := input.MapRange()
-		for iter.Next() {
-			kv := reflect.New(resolvedKeyType).Elem()
-			known, err := awaitInputs(ctx, iter.Key(), kv)
+		// If the input is an Output, await its value. The returned value is fully resolved.
+		if output, ok := input.(Output); ok {
+			e, known, err := output.await(ctx)
 			if err != nil || !known {
 				return known, err
+			}
+			if !assignInput {
+				resolved.Set(reflect.ValueOf(e))
+			} else {
+				resolved.Set(reflect.ValueOf(input))
+			}
+			return true, nil
+		}
+
+		// Check for types that are already fully-resolved.
+		if v, ok := getResolvedValue(input); ok {
+			resolved.Set(v)
+			return true, nil
+		}
+
+		v, isInput = reflect.ValueOf(input), true
+
+		// If we are assigning the input value itself, update the value type.
+		if assignInput {
+			valueType = v.Type()
+		} else {
+			// Handle pointer inputs.
+			if v.Kind() == reflect.Ptr {
+				v, valueType = v.Elem(), valueType.Elem()
+
+				resolved.Set(reflect.New(resolved.Type().Elem()))
+				resolved = resolved.Elem()
+			}
+		}
+	}
+
+	contract.Assert(valueType.AssignableTo(resolved.Type()))
+
+	// If the resolved type is an interface, make an appropriate destination from the value's type.
+	if resolved.Kind() == reflect.Interface {
+		iface := resolved
+		defer func() { iface.Set(resolved) }()
+		resolved = reflect.New(valueType).Elem()
+	}
+
+	known, err := true, error(nil)
+	switch v.Kind() {
+	case reflect.Interface:
+		if !v.IsNil() {
+			return awaitInputs(ctx, v.Elem(), resolved)
+		}
+	case reflect.Ptr:
+		if !v.IsNil() {
+			resolved.Set(reflect.New(resolved.Type().Elem()))
+			return awaitInputs(ctx, v.Elem(), resolved.Elem())
+		}
+	case reflect.Struct:
+		typ := v.Type()
+		getMappedField := mapStructTypes(typ, resolved.Type())
+		numFields := typ.NumField()
+		for i := 0; i < numFields; i++ {
+			_, field := getMappedField(resolved, i)
+			fknown, ferr := awaitInputs(ctx, v.Field(i), field)
+			known = known && fknown
+			if err == nil {
+				err = ferr
+			}
+		}
+	case reflect.Array:
+		l := v.Len()
+		for i := 0; i < l; i++ {
+			eknown, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
+			known = known && eknown
+			if err == nil {
+				err = eerr
+			}
+		}
+	case reflect.Slice:
+		l := v.Len()
+		resolved.Set(reflect.MakeSlice(resolved.Type(), l, l))
+		for i := 0; i < l; i++ {
+			eknown, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
+			known = known && eknown
+			if err == nil {
+				err = eerr
+			}
+		}
+	case reflect.Map:
+		resolved.Set(reflect.MakeMap(resolved.Type()))
+		resolvedKeyType, resolvedValueType := resolved.Type().Key(), resolved.Type().Elem()
+		iter := v.MapRange()
+		for iter.Next() {
+			kv := reflect.New(resolvedKeyType).Elem()
+			kknown, kerr := awaitInputs(ctx, iter.Key(), kv)
+			if err == nil {
+				err = kerr
 			}
 
 			vv := reflect.New(resolvedValueType).Elem()
-			known, err = awaitInputs(ctx, iter.Value(), vv)
-			if err != nil || !known {
-				return known, err
+			vknown, verr := awaitInputs(ctx, iter.Value(), vv)
+			if err == nil {
+				err = verr
 			}
 
-			result.SetMapIndex(kv, vv)
-		}
+			if kerr == nil && verr == nil && kknown && vknown {
+				resolved.SetMapIndex(kv, vv)
+			}
 
-		resolved.Set(result)
-		return true, nil
+			known = known && kknown && vknown
+		}
 	default:
-		if !inputType.AssignableTo(resolvedType) {
-			if !inputType.ConvertibleTo(resolvedType) {
-				return true, errors.Errorf("cannot resolve a %v to a %v", resolvedType, inputType)
-			}
-			input = input.Convert(resolvedType)
+		if isInput {
+			v = v.Convert(valueType)
 		}
-		resolved.Set(input)
-		return true, nil
+		resolved.Set(v)
 	}
+	return known, err
 }
 
-// ToOutput returns an Output that will resolve when all Inputs contained in the given Input have resolved.
-func ToOutput(input Input) Output {
-	return ToOutputWithContext(context.Background(), input)
+// ToOutput returns an Output that will resolve when all Inputs contained in the given value have resolved.
+func ToOutput(v interface{}) Output {
+	return ToOutputWithContext(context.Background(), v)
 }
 
-// ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given Input have
+// ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
-func ToOutputWithContext(ctx context.Context, input Input) Output {
-	elementType := input.ElementType()
+func ToOutputWithContext(ctx context.Context, v interface{}) Output {
+	resolvedType := reflect.TypeOf(v)
+	if input, ok := v.(Input); ok {
+		resolvedType = input.ElementType()
+	}
 
 	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(elementType); ok {
+	if ot, ok := concreteTypeToOutputType.Load(resolvedType); ok {
 		resultType = ot.(reflect.Type)
 	}
 
-	result := newOutput(resultType, gatherDependencies(input)...)
+	result := newOutput(resultType, gatherDependencies(v)...)
 	go func() {
-		element := reflect.New(elementType).Elem()
+		element := reflect.New(resolvedType).Elem()
 
-		known, err := awaitInputs(ctx, reflect.ValueOf(input), element)
+		known, err := awaitInputs(ctx, reflect.ValueOf(v), element)
 		if err != nil || !known {
 			result.fulfill(nil, known, err)
 			return
 		}
 
-		result.resolve(element.Interface(), true)
+		result.resolveValue(element, true)
 	}()
 	return result
 }
@@ -718,8 +746,17 @@ type Input interface {
 var anyType = reflect.TypeOf((*interface{})(nil)).Elem()
 
 func Any(v interface{}) AnyOutput {
-	out, resolve, _ := NewOutput()
-	resolve(v)
+	return AnyWithContext(context.Background(), v)
+}
+
+func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
+	// Return an output that resolves when all nested inputs have resolved.
+	out := newOutput(anyOutputType, gatherDependencies(v)...)
+	go func() {
+		var result interface{}
+		known, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result))
+		out.fulfill(result, known, err)
+	}()
 	return out.(AnyOutput)
 }
 

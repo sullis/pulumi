@@ -87,7 +87,7 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 	}
 
 	// Register all the outputs to the stack object.
-	if err = ctx.RegisterResourceOutputs(ctx.stack, ctx.exports); err != nil {
+	if err = ctx.RegisterResourceOutputs(ctx.stack, Map(ctx.exports)); err != nil {
 		result = multierror.Append(result, err)
 	}
 

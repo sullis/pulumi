@@ -47,6 +47,13 @@ type {{.Name}}Input interface {
 {{if .DefineInputType}}
 // {{.Name}} is an input type for {{.Type}} values.
 type {{.Name}} {{.Type}}
+{{else if .DefinePtrType}}
+type {{.PtrType}} {{.ElemElementType}}
+
+// {{.Name}} is an input type for {{.Type}} values.
+func {{.Name}}(v {{.ElemElementType}}) {{.Name}}Input {
+	return ({{.InputType}})(&v)
+}
 {{end}}
 {{if .DefineInputMethods}}
 // ElementType returns the element type of this Input ({{.ElementType}}).
@@ -75,7 +82,7 @@ func (in {{$builtin.InputType}}) To{{$t.Name}}OutputWithContext(ctx context.Cont
 {{end}}
 {{end}}
 // {{.Name}}Output is an Output that returns {{.ElementType}} values.
-type {{.Name}}Output struct  { *OutputState } 
+type {{.Name}}Output struct { *OutputState }
 
 // ElementType returns the element type of this Output ({{.ElementType}}).
 func ({{.Name}}Output) ElementType() reflect.Type {
@@ -102,10 +109,17 @@ func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Cont
 }
 {{end}}
 {{end}}
+{{if .DefineElem}}
+func (o {{.Name}}Output) Elem() {{.ElemReturnType}}Output {
+	return o.ApplyT(func (v {{.ElementType}}) {{.ElemElementType}} {
+		return *v
+	}).({{.ElemReturnType}}Output)
+}
+{{end}}
 {{if .DefineIndex}}
 func (o {{.Name}}Output) Index(i IntInput) {{.IndexReturnType}}Output {
 	return All(o, i).ApplyT(func(vs []interface{}) {{.IndexElementType}} {
-			return vs[0].({{.ElementType}})[vs[1].(int)]
+		return vs[0].({{.ElementType}})[vs[1].(int)]
 	}).({{.IndexReturnType}}Output)
 }
 {{end}}
@@ -118,6 +132,15 @@ func (o {{.Name}}Output) MapIndex(k StringInput) {{.MapIndexReturnType}}Output {
 {{end}}
 {{end}}
 {{end}}
+
+func getResolvedValue(input Input) (reflect.Value, bool) {
+	switch input := input.(type) {
+	case *asset, *archive:
+		return reflect.ValueOf(input), true
+	default:
+		return reflect.Value{}, false
+	}
+}
 
 func init() {
 {{- range .Builtins}}
